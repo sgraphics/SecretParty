@@ -367,3 +367,5 @@ FodyWeavers.xsd
 /Aiv.Web/appsettings.Debug.json
 /TranslateBetter.Web/appsettings.Development.json
 /StockPhotoAI/appsettings.Development.json
+/SecretParty/appsettings.Development.json
+/SecretParty.Client/wwwroot/appsettings.Development.json
