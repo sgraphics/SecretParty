@@ -1,0 +1,63 @@
+﻿.splash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    width: 100%;
+    height: 100vh;
+    background-color: black;
+    background-image: url(img/splashback.png);
+    background-size: cover;
+    background-position: 50% 25%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    color: white;
+    overflow:hidden;
+}
+
+.text-right, .text-left {
+    font-size: 50pt;
+    position: absolute;
+    width: 100%;
+    overflow:hidden;
+    font-family: 'Josefin Sans', sans-serif;
+    font-family: 'Sora', sans-serif;
+}
+
+.text-right {
+    top: 40%; /* Adjust for vertical positioning */
+    animation: moveRight 10s ease-in-out infinite alternate;
+}
+
+.text-left {
+    top: calc(40% + 50px); /* Adjust for vertical positioning below 'SECRET' */
+    animation: moveLeft 10s ease-in-out infinite alternate;
+}
+
+@keyframes moveRight {
+    0%, 100% {
+        left: calc(50% - 160px);
+    }
+
+    50% {
+        left: calc(50% - 80px);
+    }
+}
+
+@keyframes moveLeft {
+    0%, 100% {
+        left: calc(50% - 80px);
+    }
+
+    50% {
+        left: calc(50% - 160px);
+    }
+}
+.loading {
+    text-align: center;
+    bottom: 20px;
+
+    position: absolute;
+    text-shadow: black 1px 1px;
+}

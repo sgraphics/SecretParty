@@ -1,0 +1,27 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+
+@if (!string.IsNullOrWhiteSpace(Email))
+{
+	<span>Hello, @Email!&nbsp;</span>
+	<a href="api/SecretParty/signOut" class="nav-link btn btn-link">Log out</a>
+}
+
+@code
+{
+	public string? Email { get; set; }
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+		await TryLogin();
+	}
+
+	private async Task TryLogin()
+	{
+		var statute = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+		var user = statute.User;
+		Email = user.Identity?.Name;
+	}
+
+
+}

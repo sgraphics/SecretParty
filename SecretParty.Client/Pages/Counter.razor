@@ -1,0 +1,42 @@
+﻿@page "/"
+@rendermode InteractiveAuto
+@using Blazr.RenderState
+@using Darnton.Blazor.DeviceInterop.Geolocation
+@using AzureMapsControl.Components.Map
+@using AzureMapsControl.Components.Traffic
+@inject IBlazrRenderStateService RenderState
+@inject IGeolocationService GeolocationService
+
+
+<PageTitle>Secret Party Club</PageTitle>
+
+@if (RenderState.IsPreRender)
+{
+	<Splash />
+	return;
+}
+<AzureMap Id="map"
+          CameraOptions="new CameraOptions { Zoom = 10 }"
+          StyleOptions="new StyleOptions { ShowLogo = false, AutoResize = true, Style = MapStyle.Night }"
+		  TrafficOptions="new TrafficOptions { Incidents = false, Flow = TrafficFlow.None }"
+          EventActivationFlags="MapEventActivationFlags.None().Enable(MapEventType.Ready)"
+          OnReady="OnMapReadyAsync" />
+@code {
+	protected GeolocationResult? CurrentPositionResult { get; set; }
+	protected string CurrentLatitude => 
+		CurrentPositionResult?.Position?.Coords?.Latitude.ToString("F2");
+	protected string CurrentLongitude => 
+		CurrentPositionResult?.Position?.Coords?.Longitude.ToString("F2");
+	public async Task OnMapReadyAsync(MapEventArgs eventArgs)
+	{
+		CurrentPositionResult = await GeolocationService.GetCurrentPosition(options: new PositionOptions { EnableHighAccuracy = true });
+		if (CurrentPositionResult.IsSuccess)
+		{
+			await eventArgs.Map.SetCameraOptionsAsync(
+				options => options.Center =
+					new AzureMapsControl.Components.Atlas.Position
+						(Convert.ToDouble(CurrentLongitude), Convert.ToDouble(CurrentLatitude)));
+			await eventArgs.Map.SetTrafficOptionsAsync(options => options.Incidents = true);
+		}
+	}
+}

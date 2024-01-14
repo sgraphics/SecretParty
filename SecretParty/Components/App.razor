@@ -1,0 +1,117 @@
+﻿@inject IConfiguration Configuration
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<base href="/" />
+	<link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+	<link rel="stylesheet" href="app.css" />
+	<link rel="stylesheet" href="SecretParty.styles.css" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300&display=swap" rel="stylesheet">
+	<link rel="icon" type="image/png" href="favicon.png" />
+	<link rel="stylesheet" href="_content/BootstrapBlazor/css/bootstrap.blazor.bundle.min.css">
+	<link href="css/site.css" rel="stylesheet" />
+	<HeadOutlet />
+	<script>
+
+		function GetOffset() {
+			return new Date().getTimezoneOffset();
+		}
+		function GetUserTimeZone() {
+			return Intl.DateTimeFormat().resolvedOptions().timeZone;
+		}
+	</script>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet"
+	      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
+	      data-tag="font" data-bs-tag="font" />
+	<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300&family=Sora:wght@100&display=swap" rel="stylesheet">
+
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-JK4ZZVYE34">
+	</script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() { dataLayer.push(arguments); }
+		gtag('js', new Date());
+
+		gtag('config', 'G-JK4ZZVYE34');
+	</script>
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" type="text/css" />
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/drawing/0.1/atlas-drawing.min.css" type="text/css" />
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/indoor/0.1/atlas-indoor.min.css" type="text/css" />
+</head>
+
+<body>
+<Routes />
+	<script src="_framework/blazor.web.js"></script>
+	<script src="_content/BootstrapBlazor/js/bootstrap.blazor.bundle.min.js"></script>
+<script type="text/javascript">
+		function InitializeSqPaymentForm(caller, method) {
+			const payments = Square.payments('@Configuration["SquareApplicationId"]', '@Configuration["SquareLocation"]');
+			let card;
+			initializeCard(payments, caller, method);
+		}
+
+		function Undisable() {
+			document.querySelector('button#submitCard').textContent = "Submit";
+			document.querySelector('button#submitCard').removeAttribute("disabled");
+		}
+
+		function SubmitCard() {
+			document.querySelector('#payment-form').dispatchEvent(new Event('squareSubmit'));
+		}
+
+		async function initializeCard(payments, caller, method) {
+			const cardDetails = await payments.card();
+			card = cardDetails;
+			await card.attach('#card-container');
+			document.querySelector('button#submitCard').style.display = 'block';
+			var form = document.querySelector('#payment-form');
+			form.onsubmit = null;  // Remove the form's submit event handler
+
+
+			form.addEventListener('squareSubmit', async function (event) {
+				event.preventDefault();
+				document.querySelector('button#submitCard').textContent = "Please wait...";
+				document.querySelector('button#submitCard').setAttribute("disabled", "disabled");
+				const result = await card.tokenize();
+				if (result.status === 'OK') {
+					await caller.invokeMethodAsync(method, result.token).then();
+				} else {
+					Undisable();
+					console.error('Failed to tokenize card:', result.errors);
+				}
+			});
+		}
+
+
+		function ScrollBottom() {
+
+			var objDiv = document.getElementById("chatcontainer");
+			objDiv.scrollTop = objDiv.scrollHeight;
+		}
+
+	</script>
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
+<script src="https://atlas.microsoft.com/sdk/javascript/drawing/0.1/atlas-drawing.min.js"></script>
+<script src="https://atlas.microsoft.com/sdk/javascript/indoor/0.1/atlas-indoor.js"></script>
+<script src="_content/AzureMapsControl.Components/azure-maps-control.js"></script>
+<script type="text/javascript">
+        azureMapsControl.Extensions.getTokenCallback = (resolve, reject, map) => {
+            DotNet.invokeMethodAsync('AzureMaps', 'GetAccessToken')
+            .then(function (response) {
+                return response;
+            }).then(function (token) {
+                resolve(token);
+            });
+        };
+    </script>
+</body>
+
+</html>

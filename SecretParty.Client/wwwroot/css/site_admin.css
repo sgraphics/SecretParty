@@ -1,0 +1,111 @@
+/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification\
+for details on configuring this project to bundle and minify static web assets. */
+
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
+
+a, .nav-link, .navbar-light .navbar-nav .nav-link {
+    color: #00467c;
+    text-decoration: none;
+}
+
+    a:hover, .nav-link:hover, .navbar-light .navbar-nav .nav-link:hover {
+        color: black;
+        text-decoration: underline;
+    }
+
+.nav-pills .nav-link.active, .nav-pills .show > .nav-link{
+    background-color:white;
+    color:black;
+}
+.form-control:focus {
+    border-color: #0077cc;
+    box-shadow: 0 0 0 0.2rem #0077cc;
+}
+
+
+.btn-primary {
+    color: white;
+    background-color: black;
+    border-color: black;
+    padding: 10px;
+    font-size: 1.25rem;
+    border-radius: 0.3rem;
+}
+
+html {
+    font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+.container {
+    max-width: 960px;
+}
+
+.pricing-header {
+    max-width: 700px;
+}
+
+.border-top {
+    border-top: 1px solid #e5e5e5;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.box-shadow {
+    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+}
+
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    margin-bottom: 60px;
+    background-color: #0982ff;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    overflow: scroll;
+    white-space: nowrap;
+    line-height: 60px;
+}
+input, button {
+    padding: 10px;
+    margin-bottom: 10px;
+}
+.input-group-append {
+    margin-bottom: 10px;
+}
+.btn-primary:hover {
+    color: #fff;
+    background-color: black;
+    border-color: black;
+    text-decoration:underline;
+}
+.navbar-brand img {
+    width: 150px;
+}
+.navbar-brand {
+    line-height: 74px;
+}
