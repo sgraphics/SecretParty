@@ -1,0 +1,354 @@
+﻿@page "/chat"
+@rendermode InteractiveServer
+
+<PageTitle>SecretParty Chat</PageTitle>
+@using System.Text.RegularExpressions
+@using BootstrapBlazor.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IConfiguration Configuration
+@inject IJSRuntime JsRuntime
+@inject IUserService UserService
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+@inject AiProxy AiProxy
+@inject NavigationManager NavigationManager;
+
+@if (_messages == null)
+{
+	<p><em>Loading...</em></p>
+}
+else
+{
+	<div class="chatcontainer" id="chatcontainer">
+
+		@if (sending)
+		{
+			<div class="row">
+				<div class="col col-md-auto translateBetterpod ischat">
+					<img src="img/say_aiv.webp" class="say_aiv" />
+					<div class="chatbubble">
+						<p class="typing">
+							<span></span>
+							<span></span>
+							<span></span>
+						</p>
+					</div>
+				</div>
+				<div class="col">&nbsp;</div>
+			</div>
+		}
+		@if (!string.IsNullOrWhiteSpace(writeOut))
+		{
+			<div class="row">
+				<div class="col col-md-auto translateBetterpod ischat">
+					<img src="img/say_aiv.webp" class="say_aiv" />
+					<div class="chatbubble">@((MarkupString)writeOut.Replace("\n", "<br/>"))</div>
+				</div>
+				<div class="col">&nbsp;</div>
+			</div>
+		}
+		@foreach (var request in _messages.Values.Reverse())
+		{
+			<div class="row">
+				@if (request.IsHuman)
+				{
+					<div class="col">&nbsp;</div>
+					<div class="col col-md-auto translateBetterpod person @(request.IsChat ? "ischat" : "notchat")">
+						<img src="img/say_person.webp" class="say_person" />
+						<div class="chatbubble">@((MarkupString)request.Text.Replace("\n", "<br/>"))</div>
+					</div>
+				}
+				else
+				{
+					<div class="col col-md-auto translateBetterpod @(request.IsChat ? "ischat" : "notchat")">
+						<img src="img/say_aiv.webp" class="say_aiv" />
+						<div class="chatbubble">
+							@((MarkupString)request.Text.Replace("\n", "<br/>"))
+							@if (!string.IsNullOrWhiteSpace(request.img))
+							{
+								<a href="@request.img" target="_blank">
+									<img src="@request.img" alt="@request.Text" />
+								</a>
+							}
+						</div>
+					</div>
+					<div class="col">&nbsp;</div>
+				}
+			</div>
+		}
+	</div>
+	<div class="chatbox row">
+		<div class="col col-4 row leftchatbox">
+			<select name="language" @bind="_size">
+				<option value="1024x1024">Square</option>
+				<option value="1024x1792">Portrait</option>
+				<option value="1792x1024">Landscape</option>
+			</select>
+			<select name="language" @bind="_style">
+				<option value="natural">Natural</option>
+				<option value="vivid">Vivid</option>
+			</select>
+		</div>
+		<div class="col col-8">
+			<img src="img/send.webp" @onclick="SendMessage" class="sendimage @(sending ? "disabled" : String.Empty)" alt="send chat to AI" />
+			<div class="textcontainer">
+				<textarea placeholder="Describe your photo. E.g. Construction workers planning a building" rows="3" @bind="messageToSend"></textarea>
+			</div>
+		</div>
+	</div>
+}
+
+<Modal @ref="modal">
+	<ModalDialog Title="Register" ShowCloseButton="false">
+
+		<BodyTemplate>
+			<div class="row">
+				<h4>First things first</h4>
+				<p>
+					Register now to confirm you are a human to join the party!
+				</p>
+			</div>
+		</BodyTemplate>
+		<FooterTemplate>
+			@if (!_waitingForToken)
+			{
+				@if (!string.IsNullOrWhiteSpace(_error))
+				{
+					<div class="alert alert-warning">@_error</div>
+				}
+				<input type="text" placeholder="E-mail" @bind="NewEmail" />
+				<button value="Subscribe now" @onclick="Subscribe">Confirm</button>
+
+			}
+			else
+			{
+				<h5>Check your email!</h5>
+				@if (!string.IsNullOrWhiteSpace(_error))
+				{
+					<div class="alert alert-warning">@_error</div>
+				}
+				<input type="text" placeholder="Login code" @bind="Token" />
+				<button value="Subscribe now" @onclick="ConfirmCode">Confirm code</button>
+				<button value="Re-send code" class="btn-secondary" @onclick="() => _waitingForToken = false">Re-send code</button>
+			}
+		</FooterTemplate>
+	</ModalDialog>
+
+</Modal>
+
+
+@code {
+	[Parameter]
+	[SupplyParameterFromQuery(Name = "register")]
+	public string? Register { get; set; }
+
+	private bool ShowRegistration() => !string.IsNullOrWhiteSpace(Register) && Register.ToLower() == "true";
+	private string _size = "1024x1024";
+	private string _style = "vivid";
+
+	private string? _error = null;
+	private string? Token = null;
+
+	private bool _waitingForToken = false;
+
+	private Modal modal;
+	private Modal subscribeModal;
+
+	public bool _scrollDone;
+
+	private string? messageToSend;
+	private string? Email;
+
+	private string? NewEmail;
+
+	private string writeOut;
+	
+	private string? _previousMessage;
+	private string? _previousPrompt;
+
+	private record Message(string Text, DateTimeOffset Timestamp, string Id, bool IsHuman, bool IsChat, bool IsError = false, string? img = null)
+	{
+	}
+
+	private SortedList<DateTimeOffset, Message> _messages;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+
+		await TryLogin();
+
+		_messages = new SortedList<DateTimeOffset, Message>();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender)
+		{
+			if (string.IsNullOrWhiteSpace(Email) && ShowRegistration())
+			{
+				Task.Run(async () =>
+				{
+					await Task.Delay(200);
+					await modal.Show();
+					StateHasChanged();
+				});
+			}
+		}
+	}
+
+	private async Task TryLogin()
+	{
+		var authstate = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+		var user = authstate.User;
+		Email = user.Identity.Name;
+	}
+
+	private bool sending;
+
+	private async Task SendMessage()
+	{
+		if (string.IsNullOrWhiteSpace(Email))
+		{
+			await modal.Show();
+			return;
+		}
+		if (sending)
+		{
+			return;
+		}
+		sending = true;
+		try
+		{
+			if (string.IsNullOrWhiteSpace(messageToSend))
+			{
+				return;
+			}
+
+
+			var newChat = messageToSend;
+
+			_messages.Add(DateTimeOffset.Now, new Message(messageToSend ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), true, true));
+
+			messageToSend = null;
+
+			//input chat
+			var pastChatsString = string.Join("\r\n", _messages.Where(x => x.Value.IsChat).TakeLast(20).Select(p => $"{(p.Value.IsHuman ? "friend" : "me")}: {p.Value.Text}"));
+
+			StateHasChanged();
+			await JsRuntime.InvokeVoidAsync("ScrollBottom");
+			var isPrompt = false;
+			var prompt = string.Empty;
+			int i = 10;
+			var aiMessageRecords = new List<AiMessageRecord>();
+			//TODO: add proper sys data
+			aiMessageRecords.Add(new(AiMessageRole.System, @""));
+
+			if (!string.IsNullOrWhiteSpace(_previousMessage) && !string.IsNullOrWhiteSpace(_previousPrompt))
+			{
+				//TODO Add pastChatsString somehow
+				aiMessageRecords.Add(new(AiMessageRole.System, @""));
+
+				AddTrainingData(aiMessageRecords); 
+				aiMessageRecords.Add(new(AiMessageRole.User, _previousMessage));
+				aiMessageRecords.Add(new(AiMessageRole.Partygoer, _previousPrompt));
+			}
+			else
+			{
+				AddTrainingData(aiMessageRecords);
+			}
+
+			aiMessageRecords.Add(new(AiMessageRole.User, @$"{newChat}"));
+
+			await foreach (var item in await AiProxy.ThinkStream(aiMessageRecords))
+			{
+				if (item == null)
+				{
+					continue;
+				}
+
+				if (item.Trim() == "▒")
+				{
+					isPrompt = true;
+				}
+				else if (isPrompt)
+				{
+					prompt += item;
+				}
+				else
+				{
+					writeOut += item;
+				}
+				StateHasChanged();
+				if (i % 10 == 0)
+				{
+					try
+					{
+						await JsRuntime.InvokeVoidAsync("ScrollBottom");
+					}
+					catch
+					{
+					}
+				}
+			}
+
+			string? img = null;
+			if (!string.IsNullOrWhiteSpace(prompt))
+			{
+				_previousPrompt = prompt;
+				_previousMessage = newChat;
+			}
+
+			_messages.Add(DateTimeOffset.Now, new Message(writeOut ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true, img: img));
+
+			writeOut = null;
+			Task.Run(async () =>
+			{
+				await Task.Delay(200);
+				await JsRuntime.InvokeVoidAsync("ScrollBottom");
+			});
+
+		}
+		catch (Exception ex)
+		{
+			_messages.Add(DateTimeOffset.Now, new Message(ex.Message, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, false, true));
+		}
+		finally
+		{
+			sending = false;
+			writeOut = null;
+			StateHasChanged();
+		}
+
+		void AddTrainingData(List<AiMessageRecord> aiMessageRecords)
+		{
+			//TODO:
+		}
+	}
+
+	private async Task Subscribe()
+	{
+		var regex = new Regex("^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$");
+
+		if (string.IsNullOrWhiteSpace(NewEmail) || !regex.IsMatch(NewEmail?.ToLower()))
+		{
+			_error = "Invalid Email";
+			return;
+		}
+		_error = null;
+		await UserService.StartLogin(NewEmail);
+		_waitingForToken = true;
+	}
+
+	private async Task ConfirmCode()
+	{
+		if (string.IsNullOrWhiteSpace(Token))
+		{
+			_error = "Please enter token";
+			return;
+		}
+		_error = null;
+		NavigationManager.NavigateTo("/api/SecretParty/authenticateToken?token=" + Token, true);
+	}
+
+}
