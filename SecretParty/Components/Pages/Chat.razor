@@ -3,6 +3,7 @@
 
 <PageTitle>SecretParty Chat</PageTitle>
 @using System.Text.RegularExpressions
+@using Azure.AI.OpenAI
 @using BootstrapBlazor.Components
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IConfiguration Configuration
@@ -161,9 +162,6 @@ else
 	private string? NewEmail;
 
 	private string writeOut;
-	
-	private string? _previousMessage;
-	private string? _previousPrompt;
 
 	private record Message(string Text, DateTimeOffset Timestamp, string Id, bool IsHuman, bool IsChat, bool IsError = false, string? img = null)
 	{
@@ -241,65 +239,16 @@ else
 			var prompt = string.Empty;
 			int i = 10;
 			var aiMessageRecords = new List<AiMessageRecord>();
-			//TODO: add proper sys data
-			aiMessageRecords.Add(new(AiMessageRole.System, @""));
 
-			if (!string.IsNullOrWhiteSpace(_previousMessage) && !string.IsNullOrWhiteSpace(_previousPrompt))
-			{
-				//TODO Add pastChatsString somehow
-				aiMessageRecords.Add(new(AiMessageRole.System, @""));
+			aiMessageRecords.Add(new(AiMessageRole.System, @"You are active like a person called Lisa. You and the user named Alan are both at an underground party."));
 
-				AddTrainingData(aiMessageRecords); 
-				aiMessageRecords.Add(new(AiMessageRole.User, _previousMessage));
-				aiMessageRecords.Add(new(AiMessageRole.Partygoer, _previousPrompt));
-			}
-			else
-			{
-				AddTrainingData(aiMessageRecords);
-			}
+			AddTrainingData(aiMessageRecords);
 
 			aiMessageRecords.Add(new(AiMessageRole.User, @$"{newChat}"));
 
-			await foreach (var item in await AiProxy.ThinkStream(aiMessageRecords))
-			{
-				if (item == null)
-				{
-					continue;
-				}
+			writeOut = await AiProxy.ThinkStream(aiMessageRecords);
 
-				if (item.Trim() == "▒")
-				{
-					isPrompt = true;
-				}
-				else if (isPrompt)
-				{
-					prompt += item;
-				}
-				else
-				{
-					writeOut += item;
-				}
-				StateHasChanged();
-				if (i % 10 == 0)
-				{
-					try
-					{
-						await JsRuntime.InvokeVoidAsync("ScrollBottom");
-					}
-					catch
-					{
-					}
-				}
-			}
-
-			string? img = null;
-			if (!string.IsNullOrWhiteSpace(prompt))
-			{
-				_previousPrompt = prompt;
-				_previousMessage = newChat;
-			}
-
-			_messages.Add(DateTimeOffset.Now, new Message(writeOut ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true, img: img));
+			_messages.Add(DateTimeOffset.Now, new Message(writeOut ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true));
 
 			writeOut = null;
 			Task.Run(async () =>
@@ -322,7 +271,10 @@ else
 
 		void AddTrainingData(List<AiMessageRecord> aiMessageRecords)
 		{
-			//TODO:
+			foreach (var message in _messages)
+			{
+				aiMessageRecords.Add(new AiMessageRecord(message.Value.IsHuman ? AiMessageRole.User : AiMessageRole.Assistant, message.Value.Text));
+			}
 		}
 	}
 

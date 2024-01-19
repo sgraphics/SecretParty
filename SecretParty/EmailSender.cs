@@ -30,7 +30,7 @@ namespace SecretParty.Web.Data
 			var client = new SendGridClient(apiKey);
 			var msg = new SendGridMessage()
 			{
-				From = new EmailAddress("support@SecretParty.net", "SecretParty.net"),
+				From = new EmailAddress("Support@SecretParty.Club", "SecretParty.Club"),
 				Subject = subject,
 				PlainTextContent = message,
 				HtmlContent = message

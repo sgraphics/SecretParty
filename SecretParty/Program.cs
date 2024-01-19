@@ -8,6 +8,7 @@ using Stripe;
 using SecretParty.Web.Data;
 using Blazr.RenderState.Server;
 using AzureMapsControl.Components;
+using SecretParty.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddBootstrapBlazor();
 builder.Services.AddTransient<IEmailSender, EmailSender>();
+builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddSingleton<AiProxy>();
 builder.Services.AddScoped(sp =>
 	new HttpClient
 	{

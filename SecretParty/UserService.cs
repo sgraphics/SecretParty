@@ -49,15 +49,15 @@ public class UserService : IUserService
 		//send email
 		await _emailSender.SendEmailAsync(
 			email,
-			"Login to SecretParty.net",
+			"Login to SecretParty.Club",
 			$@"
 
 <div style=""font-family:'gotham-bold','Roboto Bold',Roboto,Helvetica Neue,Helvetica,sans-serif"">
-	<p><img src=""https://SecretParty.net/img/logo.png"" style=""width:250px""></p>
+	<p><img src=""https://SecretParty.Club/img/logo.png"" style=""width:250px""></p>
 	<p style=""font-size: 32px;font-weight: 500;"">Hi,<br/>To automatically connect to the SecretParty, copy/paste this temporary login code: </p>
 	<p style=""text-align:center;padding:7px 20px;color:#001131;font-weight:500;text-decoration:none;font-size:20px;font-family:'gotham-light','Roboto Light',Roboto,Helvetica Neue,Helvetica,sans-serif;line-height:27px;border:1px solid #d5e1e9;box-sizing:border-box;background:#edf4f9""><strong>{token}</strong></p>
 	<hr style=""border:1px solid #d5e1e9"">
-	<span style=""padding-top:0px;color:#4d5766;font-weight:300;text-decoration:none;font-size:12px;font-family:'gotham-light','Roboto Light',Roboto,Helvetica Neue,Helvetica,sans-serif;line-height:16px;text-align:left"">If you need any assistance using SecretParty.net, please contact support@SecretParty.com.</span>
+	<span style=""padding-top:0px;color:#4d5766;font-weight:300;text-decoration:none;font-size:12px;font-family:'gotham-light','Roboto Light',Roboto,Helvetica Neue,Helvetica,sans-serif;line-height:16px;text-align:left"">If you need any assistance using SecretParty.Club, please contact Support@SecretParty.Club.</span>
 </div>"
 		);
 
