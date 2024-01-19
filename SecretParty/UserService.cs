@@ -1,23 +1,32 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using SecretParty.Client;
+using SecretParty.Model;
 
 public class UserService : IUserService
 {
 	private readonly IHttpContextAccessor _httpContextAccessor;
 	private readonly IConfiguration _configuration;
 	private readonly IEmailSender _emailSender;
+	private readonly ILogger<UserService> _logger;
 	private TableServiceClient _serviceClient;
+	private readonly BlobServiceClient _blobServiceClient;
 
-	public UserService(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IEmailSender emailSender)
+	public UserService(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IEmailSender emailSender, ILogger<UserService> logger)
 	{
 		_httpContextAccessor = httpContextAccessor;
 		_configuration = configuration;
 		_emailSender = emailSender;
+		_logger = logger;
 		_serviceClient = new TableServiceClient(_configuration["AzureWebJobsStorage"]);
+		_blobServiceClient = new BlobServiceClient(_configuration["AzureWebJobsStorage"]);
 	}
 
 	private async Task<TableClient> GetUsersTable()
@@ -124,6 +133,81 @@ public class UserService : IUserService
 	public async Task SignOut()
 	{
 		await _httpContextAccessor.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+	}
+
+	public async Task<Photo> UploadPhoto(string base64Image)
+	{
+		try
+		{
+			var blobContainerName = "partyparticipants";
+			var client = _blobServiceClient.GetBlobContainerClient(blobContainerName);
+			await client.CreateIfNotExistsAsync(PublicAccessType.Blob);
+			var blobName = Guid.NewGuid().ToString().Replace("-", string.Empty);
+
+			var data = Convert.FromBase64String(base64Image);
+
+			using var imageStream = new MemoryStream(data, 0, data.Length);
+
+			var image = Image.FromStream(imageStream);
+
+			var height = (200 * image.Height) / image.Width;
+
+			var thumbnail = image.GetThumbnailImage(200, height, null, IntPtr.Zero);
+
+			var thumbnailStream = new MemoryStream();
+			thumbnail.Save(thumbnailStream, ImageFormat.Png);
+
+			thumbnailStream.Position = 0;
+			imageStream.Position = 0;
+
+			var photoBlobClient = client.GetBlobClient(blobName + ".png");
+			await photoBlobClient.UploadAsync(imageStream);
+			await photoBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "image/png" });
+
+			var thumbnailBlobClient = client.GetBlobClient(blobName + "t.png");
+			await thumbnailBlobClient.UploadAsync(thumbnailStream);
+			await thumbnailBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "image/png" });
+
+			return new Photo
+			{
+				Url = $"https://{client.AccountName}.blob.core.windows.net/{blobContainerName}/{blobName}.png",
+				ThumbUrl = $"https://{client.AccountName}.blob.core.windows.net/{blobContainerName}/{blobName}t.png",
+			};
+		}
+		catch (Exception e)
+		{
+			_logger?.LogError(e, "Image thumbnail failed: " + e.Message);
+			throw;
+		}
+	}
+
+	private async Task<Stream> GetImageAsByteArray(string urlImage)
+	{
+
+		var client = new HttpClient();
+		var response = await client.GetAsync(urlImage);
+
+		return await response.Content.ReadAsStreamAsync();
+	}
+
+	public static string CreateMD5(string input)
+	{
+		// Use input string to calculate MD5 hash
+		using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+		{
+			byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
+			byte[] hashBytes = md5.ComputeHash(inputBytes);
+
+			return Convert.ToHexString(hashBytes).Replace("-", string.Empty).ToLower(); // .NET 5 +
+
+			// Convert the byte array to hexadecimal string prior to .NET 5
+			// StringBuilder sb = new System.Text.StringBuilder();
+			// for (int i = 0; i < hashBytes.Length; i++)
+			// {
+			//     sb.Append(hashBytes[i].ToString("X2"));
+			// }
+			// return sb.ToString();
+		}
 	}
 }
 

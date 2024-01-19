@@ -1,8 +1,11 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Text;
 using Azure;
 using Azure.AI.OpenAI;
+using BootstrapBlazor.Components;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Console = System.Console;
 
 namespace SecretParty.Client
 {
@@ -24,47 +27,71 @@ namespace SecretParty.Client
 
 		public async Task<string> CreateImage(string prompt)
 		{
-			var url = "https://api.clarifai.com/v2/users/openai/apps/dall-e/models/dall-e-3/versions/e38680e630bf4ee8a91454e83454fefc/outputs";
-			var apiKey = _configuration["Clarifai"]; // Replace with your actual API key
+			var url = "https://api.clarifai.com/v2/models/dall-e-3/versions/dc9dcb6ee67543cebc0b9a025861b868/outputs";
+			var PAT = _configuration["ClarifaiPAT"]; // Replace with your actual API key
 
 			using var client = new HttpClient();
 
-			client.DefaultRequestHeaders.Add("Authorization", $"Key {apiKey}");
-			client.DefaultRequestHeaders.Add("Content-Type", "application/json");
+			// Set the request headers
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+			client.DefaultRequestHeaders.Add("Authorization", $"Key {PAT}");
+			// Create the JSON payload
+			var payload = new
+			{
+				user_app_id = new { user_id = "openai", app_id = "dall-e" },
+				inputs = new[]
+				{
+					new
+					{
+						data = new
+						{
+							text = new { raw = prompt }
+						}
+					}
+				},
+				model = new
+				{
+					model_version = new
+					{
+						output_info = new
+						{
+							@params = new
+							{
+								size = "1024x1792",
+								quality = "hd",
+							}
+						}
+					}
+				}
+			};
 
-			var json = @"{
-                'inputs': [
-                    {
-                        'data': {
-                            'text': {
-                                'raw': '" + prompt + @"'
-                            }
-                        }
-                    }
-                ],
-                'model': {
-                    'model_version': {
-                        'output_info': {
-                            'params': {
-                                'size':'1024x1024',
-                                'quality':'hd',
-                                'api_key':'" + apiKey + @"'"
-			           + "} } } } }"; // Add any additional required parameters here
+			var json = JsonConvert.SerializeObject(payload);
 
 			var content = new StringContent(json, Encoding.UTF8, "application/json");
 			var response = await client.PostAsync(url, content);
 
+			var responseString = await response.Content.ReadAsStringAsync();
 			if (response.IsSuccessStatusCode)
 			{
-				var responseContent = await response.Content.ReadAsStringAsync();
-				Console.WriteLine(responseContent);
+				dynamic result = JsonConvert.DeserializeObject(responseString);
 
-				return responseContent;
+				// Check if the status code is 10000 (success)
+				if (result.status.code != 10000)
+				{
+					Console.WriteLine(result.status);
+					throw new Exception("Invalid response");
+				}
+				else
+				{
+					var thinkStream = result.outputs[0].data.image.base64 as JToken;
+					Console.WriteLine(thinkStream?.Value<string>());
+					return thinkStream?.Value<string>() ?? string.Empty;
+				}
 			}
 			else
 			{
 				Console.WriteLine($"Error: {response.StatusCode}");
-				throw new Exception(await response.Content.ReadAsStringAsync());
+				throw new Exception(responseString);
 			}
 		}
 
