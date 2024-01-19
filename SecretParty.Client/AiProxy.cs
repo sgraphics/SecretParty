@@ -144,7 +144,7 @@ namespace SecretParty.Client
 			var json = JsonConvert.SerializeObject(payload);
 
 			using var client = new HttpClient();
-
+			client.Timeout = TimeSpan.FromSeconds(200);
 			// Set the request headers
 			client.DefaultRequestHeaders.Add("Accept", "application/json");
 			client.DefaultRequestHeaders.Add("Authorization", $"Key {PAT}");
