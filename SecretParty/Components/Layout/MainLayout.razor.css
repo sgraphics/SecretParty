@@ -1,5 +1,4 @@
 .page {
-    position: relative;
     display: flex;
     flex-direction: column;
 }
@@ -9,8 +8,9 @@ main {
 }
 
 .sidebar {
-    background-color: #fff3d4;
+    background-color: #24252755;
     z-index: 10;
+    backdrop-filter: blur(10px);
 }
 
 .top-row {
@@ -45,7 +45,7 @@ main {
         }
 }
 
-@media (min-width: 641px) {
+/*@media (min-width: 641px) {
     .page {
         flex-direction: row;
     }
@@ -74,7 +74,7 @@ main {
         padding-right: 1.5rem !important;
     }
 }
-
+*/
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

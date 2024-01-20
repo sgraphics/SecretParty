@@ -38,15 +38,22 @@ namespace SecretParty.Controllers
 			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
 			var partiesTable = serviceClient.GetTableClient("Party");
 			await partiesTable.CreateIfNotExistsAsync();
+			var participantsTable = serviceClient.GetTableClient("Participant");
+			await participantsTable.CreateIfNotExistsAsync();
 			var parties = await partiesTable.QueryAsync<Party>(x => x.PartitionKey == partition).ToListAsync();
 			foreach (var party in parties)
 			{
+				var participants = await participantsTable.QueryAsync<Participant>(x => x.PartitionKey == party.RowKey)
+					.ToListAsync();
+				party.ParticipantCount = participants.Count;
+				party.SomePhotos = participants.OrderBy(x => Guid.NewGuid()).Take(3).Select(x => x.PhotoThumb!).ToList();
+				party.SomePhotos = party.SomePhotos.ToList();
 				party.ParticipantsJson = null;
 				party.Participants = null;
 			}
 			return new JsonResult(parties);
 		}
-
+		
 		[HttpGet]
 		[Route("createParties")]
 		public async Task<ActionResult> CreateParties()
@@ -60,7 +67,7 @@ namespace SecretParty.Controllers
 			var parties = new List<Party>();
 			var participants = new List<Participant>();
 
-			parties = await partiesTable.QueryAsync<Party>(x => x.PartitionKey == partition).ToListAsync();
+			//parties = await partiesTable.QueryAsync<Party>(x => x.PartitionKey == partition).ToListAsync();
 			if (parties.Any())
 			{
 				foreach (var party in parties)
@@ -119,6 +126,8 @@ The answer need to be in json array format (to support multiple parties).
 				{
 					await CreatePhotosAndStoreParticipant(participant, participantsTable);
 				}
+
+				await CreatePhotos(party);
 				party.ParticipantsJson = JsonSerializer.Serialize(party.Participants);
 				party.Participants = null;
 				await partiesTable.UpsertEntityAsync(party);
@@ -178,6 +187,14 @@ The answer need to be in json array format (to support multiple parties).
 			participant.Photo = photo.Url;
 			participant.PhotoThumb = photo.ThumbUrl;
 			await participantsTable.UpsertEntityAsync(participant);
+		}
+
+		private async Task CreatePhotos(Party participant)
+		{
+			var image = await aiProxy.CreateImage(participant.FlyerPrompt);
+			var photo = await userService.UploadPhoto(image);
+			participant.Photo = photo.Url;
+			participant.PhotoThumb = photo.ThumbUrl;
 		}
 	}
 }

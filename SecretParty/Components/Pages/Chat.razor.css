@@ -111,11 +111,11 @@
     --bs-gutter-y: 0;
 }
 
-@media(min-width: 641px) {
+/*@media(min-width: 641px) {
     .chatbox {
         width: calc(100% - 250px);
     }
-}
+}*/
 
 .leftchatbox > .col {
     padding: 10px;

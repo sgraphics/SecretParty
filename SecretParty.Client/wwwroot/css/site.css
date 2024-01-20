@@ -1,24 +1,32 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
-html, body {
-    font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background-color: White;
-    color: Black;
+html, body, .maplibregl-map {
+    font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+    background-color: Black;
+    color: White;
 }
 
-
-.top_logo   
-{
-    position:absolute;
-    top:20px;
-    left:20px;
-    width:200px;
-    z-index:10;
+h1, h2, h3, h4 {
+    font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+    font-weight: 200;
 }
+
+.top_logo {
+    position: absolute;
+    top: 14px;
+    left: 20px;
+    width: 200px;
+    z-index: 10;
+}
+
 article {
     max-width: 1200px;
-    margin-left: auto; 
+    margin-left: auto;
     margin-right: auto;
+}
+
+body{
+    overflow:hidden;
 }
 
 main {
@@ -37,7 +45,7 @@ a, .btn-link {
 
     a:hover, .btn-link:hover {
         color: black;
-        text-decoration:underline;
+        text-decoration: underline;
     }
 
 
@@ -86,59 +94,59 @@ a, .btn-link {
         content: "An error has occurred."
     }
 
-.link
-{
-        cursor: pointer;
+.link {
+    cursor: pointer;
+}
 
+.right {
+    text-align: right;
 }
-.right
-{
-    text-align:right;
+
+.subscribelogo img {
+    width: 200px;
 }
-.subscribelogo img
-{
-    width:200px;
-}
+
 input, textarea, select {
     width: 100%;
     margin-bottom: 5px;
     border: 1px solid #999 !important;
 }
-.chatbox input, .chatbox select, .chatbox textarea {
 
+.chatbox input, .chatbox select, .chatbox textarea {
     border-radius: 10px;
 }
-input[type=checkbox]
-{
+
+input[type=checkbox] {
     width: 20px;
     height: 20px;
 }
+
 .button, button, .btn-primary {
     text-decoration: none;
     font-weight: bold;
-    color: white;
-    background-color: #ff5629;
+    color: black;
+    background-color: #fffec9;
     padding: 10px 20px;
     display: inline-block;
-    width: 100%;
     cursor: pointer;
     border: none;
+    border: 1px solid #ebea84;
+    border-radius: 10px;
 }
-.button:hover, button:hover, button.btn-primary:hover {
-    text-decoration: underline;
-    color: white;
-}
+
+
     .btn-primary:hover {
-        color: #fff;
-        background-color: #ff5629;
+        color: black;
+        background-color: #fffec9;
         border-color: none;
     }
+
 .pagedetail {
     /*background-image: url(/img/glaciers_1.png);
     background-size: cover;*/
 }
+
 .maindetail {
-    background-color: #ffffffaa;
 }
 
 .slidecontainer {
@@ -158,77 +166,186 @@ input[type=checkbox]
     transition: opacity .2s;
 }
 
-/* Mouse-over effects */
-.slider:hover {
-    opacity: 1; /* Fully shown on mouse-over */
-}
+    /* Mouse-over effects */
+    .slider:hover {
+        opacity: 1; /* Fully shown on mouse-over */
+    }
 
-/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
-.slider::-webkit-slider-thumb {
-    -webkit-appearance: none; /* Override default look */
-    appearance: none;
-    width: 25px; /* Set a specific slider handle width */
-    height: 25px; /* Slider handle height */
-    background: black; /* Green background */
-    cursor: pointer; /* Cursor on hover */
-}
+    /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none; /* Override default look */
+        appearance: none;
+        width: 25px; /* Set a specific slider handle width */
+        height: 25px; /* Slider handle height */
+        background: black; /* Green background */
+        cursor: pointer; /* Cursor on hover */
+    }
 
-.slider::-moz-range-thumb {
-    width: 25px; /* Set a specific slider handle width */
-    height: 25px; /* Slider handle height */
-    background: black; /* Green background */
-    cursor: pointer; /* Cursor on hover */
-}
+    .slider::-moz-range-thumb {
+        width: 25px; /* Set a specific slider handle width */
+        height: 25px; /* Slider handle height */
+        background: black; /* Green background */
+        cursor: pointer; /* Cursor on hover */
+    }
 
-.charge span
-{
+.charge span {
     font-size: 18pt;
     font-weight: bold;
 }
+
 .stripe {
     width: 200px;
     height: 50px;
     background-image: url(/img/stripe.svg);
     background-size: 180px;
-    background-repeat:no-repeat;
+    background-repeat: no-repeat;
     background-position: -15px;
 }
-.nav-item a
-{
-    padding-left:20px;
+
+.nav-item a {
+    padding-left: 20px;
 }
+
 .sidebar {
 }
+
 .modal.fade.show {
     z-index: 10000000;
 }
+
 .modal-dialog {
     width: 600px;
 }
-.modal-content
-{
 
+.modal-content {
 }
+
     .modal-content button {
         margin-bottom: 7px;
         margin-top: 7px;
     }
-.strikeout
-{
-text-decoration:line-through;
+
+.strikeout {
+    text-decoration: line-through;
 }
+
 .underling {
     font-size: 10pt;
     color: #666;
     line-height: 120%;
     display: block;
-    margin-top:5px;
+    margin-top: 5px;
 }
-.modal-footer{
-    justify-content:flex-start;
+
+.modal-footer {
+    justify-content: flex-start;
 }
+
 #map {
     position: absolute;
-    width: 80%;
-    height: 80%;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }
+
+.partypopup {
+    max-width: 400px;
+    padding: 10px;
+    color: black;
+}
+
+    .partypopup > * {
+        display: block;
+        white-space: normal !important;
+    }
+
+    .partypopup button {
+        margin-top:10px
+    }
+    .partypage button {
+        margin-top:20px
+    }
+
+.partypopup .flyer {
+    float: right;
+    width: 120px;
+    height: 180px;
+    object-fit: cover;
+}
+.popup-content-container {
+}
+
+
+.partypage > * {
+    display: block;
+    white-space: normal !important;
+    margin-top:10px;
+}
+
+.activeParty .flyer {
+    float: right;
+}
+
+.activeParty {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 100vh;
+    left: 0;
+    right: 0;
+    transition: top 0.5s ease-in-out;
+    z-index:1;
+    overflow-x:hidden;
+    padding: 80px 50px 50px 50px;
+    background-color: #151515;
+}
+
+.activeParty .flyer
+{
+    max-width:300px;
+    min-width:80px;
+    width:40vw;
+    margin:10px;
+}
+
+.activeParty.active {
+    top:0;
+}
+.activeParty.notactive {
+    top: 100vh;
+}
+.closebtn {
+    position: absolute;
+    right: 20px;
+    top: 55px;
+    color: white;
+    font-weight: bold;
+}
+.closebtn:hover {
+    color: white;
+}
+p.participantwidget
+{
+    height:50px;
+}
+p.participantwidget span
+{
+    margin-left:80px;
+}
+p.participantwidget img {
+    width: 50px;
+    position: absolute;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+    p.participantwidget img:nth-child(2) {
+        margin-left: 15px;
+    }
+    p.participantwidget img:nth-child(3) {
+        margin-left: 30px;
+    }

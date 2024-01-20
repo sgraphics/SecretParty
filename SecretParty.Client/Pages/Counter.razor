@@ -1,9 +1,9 @@
 ﻿@page "/"
+@implements IDisposable
 @rendermode InteractiveAuto
 @using Blazr.RenderState
 @using AzureMapsControl.Components.Map
 @using AzureMapsControl.Components.Markers
-@using AzureMapsControl.Components.Traffic
 @using Flurl.Http
 @using SecretParty.Model
 @using AzureMapsControl.Components.Atlas
@@ -21,8 +21,38 @@
 	return;
 }
 
+<div class="activeParty @(_activeParty != null ? "active" : "notactive")">
+
+	@if (_activeParty != null)
+	{
+		<div class="row">
+			<div class="col col-12 partypage">
+				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
+				<img class="flyer" src="@_activeParty.Photo"/>
+				<h2>@_activeParty.PartyName</h2>
+				<span><b>Access:</b> free</span>
+				<span><b>Time:</b> ongoing</span>
+				<br/>
+				<span><b>Music style:</b> @_activeParty.MusicStyle</span>
+				<span><b>Style:</b> @_activeParty.DressCode</span>
+				<span><b>Description:</b><br />@((MarkupString)_activeParty.Description.Replace("\r\n", "<br/>"))</span>
+				<span><b>Participants:</b></span>
+				<p class="participantwidget">
+					@foreach (var somePhoto in _activeParty.SomePhotos)
+					{
+						<img src="@somePhoto" class="participantwidgetimage" />
+					}
+					<span>@(_activeParty.ParticipantCount) Active Participants</span>
+				</p>
+
+				<button @onclick="Join">Join @_activeParty.PartyName</button>
+			</div>
+		</div>
+	}
+</div>
+
 <AzureMap Id="map"
-          CameraOptions="new CameraOptions { Zoom = 10 }"
+		  CameraOptions="new CameraOptions { Zoom = 10 }"
 		  StyleOptions="new StyleOptions { ShowLogo = false, ShowFeedbackLink = false, AutoResize = true, Style = MapStyle.GrayscaleDark }"
 		  EventActivationFlags="MapEventActivationFlags.None().Enable(MapEventType.Ready)"
 		  OnReady="OnMapReadyAsync" />
@@ -31,37 +61,82 @@
 	private (double, double) Coordinates;
 	private bool Init;
 
-	protected string CurrentLatitude => 
+	protected string CurrentLatitude =>
 		Coordinates.Item1.ToString("F2");
-	protected string CurrentLongitude => 
+	protected string CurrentLongitude =>
 		Coordinates.Item2.ToString("F2");
+
+	private Party? _activeParty;
+
+	IDictionary<string, HtmlMarker> _markers = new Dictionary<string, HtmlMarker>();
+	IDictionary<string, Party> _parties = new Dictionary<string, Party>();
+	private DotNetObjectReference<Counter> objRef;
 
 	protected override async Task OnParametersSetAsync()
 	{
 		await base.OnParametersSetAsync();
 	}
+	protected override void OnInitialized()
+	{
+		objRef = DotNetObjectReference.Create(this);
+	}
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			objRef = DotNetObjectReference.Create(this);
+			await JsRuntime.InvokeVoidAsync("GreetingHelpers.setDotNetHelper",
+				objRef);
+		}
+	}
 
 	protected async Task LoadPins(Map map)
 	{
 		var parties = await $"{Navigation.BaseUri}api/SecretParty/getTodaysParties".GetJsonAsync<IList<Party>>();
-
+		_parties = parties.ToDictionary(x => x.RowKey);
 		foreach (var party in parties)
 		{
+			var point = GeoUtils.GenerateRandomPoint(Coordinates.Item1, Coordinates.Item2, 30);
+
+
+			var htmlMarker = new HtmlMarker(
+				new HtmlMarkerOptions
+					{
+						Position = new Position(point.Item2, point.Item1),
+						Draggable = false,
+						Color = "#fffec9",
+						Popup = new HtmlMarkerPopup(new PopupOptions
+						{
+							Content = $@"
+<div class=""partypopup"">
+	<img class=""flyer"" src=""{party.PhotoThumb}"" />
+	<h2>{party.PartyName}</h2>
+	<span><b>Access:</b> free</span>
+	<span><b>Time:</b> ongoing</span>
+				<br/>
+	<span><b>Music style:</b> {party.MusicStyle}</span>
+	<span><b>Style:</b> {party.DressCode}</span>
+	<button onclick=""GreetingHelpers.openParty('{party.RowKey}');"">More info</button>
+</div>",
+							Position = new Position(point.Item2, point.Item1),
+							FillColor = "white",
+							CloseButton = false,
+							OpenOnAdd = false,
+							ShowPointer = true
+						})
+					}, HtmlMarkerEventActivationFlags.None().Enable(HtmlMarkerEventType.Click));
+			_markers.Add(party.RowKey, htmlMarker);
+			htmlMarker.OnClick += async (args) =>
+			{
+				foreach (var marker in _markers.Values)
+				{
+					await marker.Options.Popup.CloseAsync();
+				}
+				await htmlMarker.TogglePopupAsync();
+			};
 			await map.AddHtmlMarkersAsync
 			(
-				new HtmlMarker(
-					new HtmlMarkerOptions
-					{
-						Position = new Position(0, 0),
-						Draggable = false,
-						Popup = new HtmlMarkerPopup(new PopupOptions {
-							Content = "<div style=\"padding:10px;color:white\">Hello World</div>",
-							Position = new Position(0, 0),
-							FillColor = "rgba(0,0,0,0.8)",
-							CloseButton = false,
-							OpenOnAdd = true
-						})
-					})
+				htmlMarker
 			);
 		}
 
@@ -79,6 +154,17 @@
 
 		LoadPins(eventArgs.Map);
 	}
+
+
+	[JSInvokable(nameof(OpenParty))]
+	public async Task OpenParty(string guid)
+	{
+		await _markers[guid].Options.Popup.CloseAsync();
+		_activeParty = _parties[guid];
+		StateHasChanged();
+	}
+
+
 	private async Task<(double, double)> GetLocation()
 	{
 		try
@@ -91,4 +177,11 @@
 			return (40.730610, -73.935242); //new york
 		}
 	}
+	public void Dispose() => objRef?.Dispose();
+
+	private Task Join()
+	{
+		throw new NotImplementedException();
+	}
+
 }

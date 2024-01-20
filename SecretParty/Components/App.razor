@@ -121,7 +121,19 @@
 				});
 			};
 		});
-    </script> *@
+	</script> *@
+	<script>
+		class GreetingHelpers {
+			static dotNetHelper;
+			static setDotNetHelper(value) {
+				GreetingHelpers.dotNetHelper = value;
+			}
+			static async openParty(id) {
+				await GreetingHelpers.dotNetHelper.invokeMethodAsync('OpenParty', id);
+			}
+		}
+		window.GreetingHelpers = GreetingHelpers;
+	</script>
 </body>
 
 </html>

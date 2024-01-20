@@ -53,7 +53,7 @@ namespace SecretParty.Model
 		public IList<Participant>? Participants { get; set; } = new List<Participant>();
 
 		[property: JsonPropertyName("participantsJson")]
-		public string ParticipantsJson { get; set; }
+		public string? ParticipantsJson { get; set; }
 
 		[JsonPropertyName("partyName")]
 		public string PartyName { get; init; }
@@ -78,7 +78,10 @@ namespace SecretParty.Model
 
 		[JsonPropertyName("flyerPrompt")]
 		public string FlyerPrompt { get; init; }
+
+		public string? Photo { get; set; }
+		public string? PhotoThumb { get; set; }
+		public int ParticipantCount { get; set; }
+		public List<string> SomePhotos { get; set; } = new();
 	};
-
-
 }
