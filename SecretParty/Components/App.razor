@@ -42,13 +42,14 @@
 
 		gtag('config', 'G-JK4ZZVYE34');
 	</script>
-	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" type="text/css" />
-	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/drawing/0.1/atlas-drawing.min.css" type="text/css" />
-	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/indoor/0.1/atlas-indoor.min.css" type="text/css" />
+	<link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
 </head>
 
 <body>
 <Routes />
+	<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+	<script src="_content/AzureMapsControl.Components/azure-maps-control.min.js"></script>
+	<script src="azure-maps-control.min.js"></script>
 	<script src="_framework/blazor.web.js"></script>
 	<script src="_content/BootstrapBlazor/js/bootstrap.blazor.bundle.min.js"></script>
 <script type="text/javascript">
@@ -98,20 +99,29 @@
 		}
 
 	</script>
-<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
-<script src="https://atlas.microsoft.com/sdk/javascript/drawing/0.1/atlas-drawing.min.js"></script>
-<script src="https://atlas.microsoft.com/sdk/javascript/indoor/0.1/atlas-indoor.js"></script>
-<script src="_content/AzureMapsControl.Components/azure-maps-control.js"></script>
-<script type="text/javascript">
-        azureMapsControl.Extensions.getTokenCallback = (resolve, reject, map) => {
-            DotNet.invokeMethodAsync('AzureMaps', 'GetAccessToken')
-            .then(function (response) {
-                return response;
-            }).then(function (token) {
-                resolve(token);
-            });
-        };
-    </script>
+	<script>
+
+		window.getCoords = async () => {
+			const pos = await new Promise((resolve, reject) => {
+				navigator.geolocation.getCurrentPosition(resolve, reject);
+			});
+			return pos.coords.latitude + ', ' + pos.coords.longitude
+
+		};
+	</script>
+@* 	<script type="text/javascript">
+		document.addEventListener("DOMContentLoaded", () => {
+
+			azureMapsControl.Extensions.getTokenCallback = (resolve, reject, map) => {
+				const url = "url_of_my_token_endpoint";
+				fetch(url).then(function (response) {
+					return response.text();
+				}).then(function (token) {
+					resolve(token);
+				});
+			};
+		});
+    </script> *@
 </body>
 
 </html>

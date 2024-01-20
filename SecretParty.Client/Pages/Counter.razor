@@ -1,11 +1,16 @@
 ﻿@page "/"
 @rendermode InteractiveAuto
 @using Blazr.RenderState
-@using Darnton.Blazor.DeviceInterop.Geolocation
 @using AzureMapsControl.Components.Map
+@using AzureMapsControl.Components.Markers
 @using AzureMapsControl.Components.Traffic
+@using Flurl.Http
+@using SecretParty.Model
+@using AzureMapsControl.Components.Atlas
+@using AzureMapsControl.Components.Popups
 @inject IBlazrRenderStateService RenderState
-@inject IGeolocationService GeolocationService
+@inject IJSRuntime JsRuntime
+@inject NavigationManager Navigation
 
 
 <PageTitle>Secret Party Club</PageTitle>
@@ -15,28 +20,75 @@
 	<Splash />
 	return;
 }
+
 <AzureMap Id="map"
           CameraOptions="new CameraOptions { Zoom = 10 }"
-          StyleOptions="new StyleOptions { ShowLogo = false, AutoResize = true, Style = MapStyle.Night }"
-		  TrafficOptions="new TrafficOptions { Incidents = false, Flow = TrafficFlow.None }"
-          EventActivationFlags="MapEventActivationFlags.None().Enable(MapEventType.Ready)"
-          OnReady="OnMapReadyAsync" />
+		  StyleOptions="new StyleOptions { ShowLogo = false, ShowFeedbackLink = false, AutoResize = true, Style = MapStyle.GrayscaleDark }"
+		  EventActivationFlags="MapEventActivationFlags.None().Enable(MapEventType.Ready)"
+		  OnReady="OnMapReadyAsync" />
+
 @code {
-	protected GeolocationResult? CurrentPositionResult { get; set; }
+	private (double, double) Coordinates;
+	private bool Init;
+
 	protected string CurrentLatitude => 
-		CurrentPositionResult?.Position?.Coords?.Latitude.ToString("F2");
+		Coordinates.Item1.ToString("F2");
 	protected string CurrentLongitude => 
-		CurrentPositionResult?.Position?.Coords?.Longitude.ToString("F2");
+		Coordinates.Item2.ToString("F2");
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+	}
+
+	protected async Task LoadPins(Map map)
+	{
+		var parties = await $"{Navigation.BaseUri}api/SecretParty/getTodaysParties".GetJsonAsync<IList<Party>>();
+
+		foreach (var party in parties)
+		{
+			await map.AddHtmlMarkersAsync
+			(
+				new HtmlMarker(
+					new HtmlMarkerOptions
+					{
+						Position = new Position(0, 0),
+						Draggable = false,
+						Popup = new HtmlMarkerPopup(new PopupOptions {
+							Content = "<div style=\"padding:10px;color:white\">Hello World</div>",
+							Position = new Position(0, 0),
+							FillColor = "rgba(0,0,0,0.8)",
+							CloseButton = false,
+							OpenOnAdd = true
+						})
+					})
+			);
+		}
+
+		StateHasChanged();
+	}
+
 	public async Task OnMapReadyAsync(MapEventArgs eventArgs)
 	{
-		CurrentPositionResult = await GeolocationService.GetCurrentPosition(options: new PositionOptions { EnableHighAccuracy = true });
-		if (CurrentPositionResult.IsSuccess)
+		//CurrentPositionResult = await GeolocationService.GetCurrentPosition(options: new PositionOptions { EnableHighAccuracy = false });
+		Coordinates = await GetLocation();
+		await eventArgs.Map.SetCameraOptionsAsync(
+			options => options.Center =
+				new AzureMapsControl.Components.Atlas.Position
+					(Convert.ToDouble(CurrentLongitude), Convert.ToDouble(CurrentLatitude)));
+
+		LoadPins(eventArgs.Map);
+	}
+	private async Task<(double, double)> GetLocation()
+	{
+		try
 		{
-			await eventArgs.Map.SetCameraOptionsAsync(
-				options => options.Center =
-					new AzureMapsControl.Components.Atlas.Position
-						(Convert.ToDouble(CurrentLongitude), Convert.ToDouble(CurrentLatitude)));
-			await eventArgs.Map.SetTrafficOptionsAsync(options => options.Incidents = true);
+			var location = (await JsRuntime.InvokeAsync<string>("getCoords"))?.Split(",");
+			return (double.Parse(location.First()), double.Parse(location.Last()));
+		}
+		catch
+		{
+			return (40.730610, -73.935242); //new york
 		}
 	}
 }

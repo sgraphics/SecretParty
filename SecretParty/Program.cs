@@ -7,7 +7,6 @@ using SecretParty.Components;
 using Stripe;
 using SecretParty.Web.Data;
 using Blazr.RenderState.Server;
-using AzureMapsControl.Components;
 using SecretParty.Client;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +18,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddBootstrapBlazor();
+
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddSingleton<AiProxy>();
@@ -36,13 +36,6 @@ builder.Services.AddControllers()
 	});
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 	.AddCookie();
-builder.Services
-	.AddScoped<Darnton.Blazor.DeviceInterop.Geolocation.IGeolocationService,
-		Darnton.Blazor.DeviceInterop.Geolocation.GeolocationService>();
-//This code uses an anonymous authentication
-builder.Services.AddAzureMapsControl(
-	configuration => configuration.SubscriptionKey = builder.Configuration.GetValue<string>("AzureMapKey"));
-
 builder.AddBlazrRenderStateServerServices();
 
 var app = builder.Build();

@@ -31,6 +31,23 @@ namespace SecretParty.Controllers
 		}
 
 		[HttpGet]
+		[Route("getTodaysParties")]
+		public async Task<ActionResult> GetParties()
+		{
+			var partition = DateTimeOffset.UtcNow.ToString("yy-MM-dd");
+			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
+			var partiesTable = serviceClient.GetTableClient("Party");
+			await partiesTable.CreateIfNotExistsAsync();
+			var parties = await partiesTable.QueryAsync<Party>(x => x.PartitionKey == partition).ToListAsync();
+			foreach (var party in parties)
+			{
+				party.ParticipantsJson = null;
+				party.Participants = null;
+			}
+			return new JsonResult(parties);
+		}
+
+		[HttpGet]
 		[Route("createParties")]
 		public async Task<ActionResult> CreateParties()
 		{

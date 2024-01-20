@@ -9,11 +9,12 @@ builder.Services.AddScoped(sp =>
 	{
 	});
 builder.AddBlazrRenderStateWASMServices();
-builder.Services
-	.AddScoped<Darnton.Blazor.DeviceInterop.Geolocation.IGeolocationService,
-		Darnton.Blazor.DeviceInterop.Geolocation.GeolocationService>();
 
-//This code uses an anonymous authentication
+
 builder.Services.AddAzureMapsControl(
-	configuration => configuration.SubscriptionKey = builder.Configuration.GetValue<string>("AzureMapKey"));
+	configuration =>
+	{
+		var key = "9us7lWqyKd-0QjY9WKXcvgx6uxKh63NKq8vCYcOfQOA";
+		configuration.SubscriptionKey = key;
+	});
 await builder.Build().RunAsync();
