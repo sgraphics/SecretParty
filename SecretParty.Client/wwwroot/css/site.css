@@ -38,13 +38,12 @@ h1:focus {
 }
 
 a, .btn-link {
-    color: #00467c;
+    color: #0090ff;
     text-decoration: none;
 }
 
 
     a:hover, .btn-link:hover {
-        color: black;
         text-decoration: underline;
     }
 
@@ -107,13 +106,17 @@ a, .btn-link {
 }
 
 input, textarea, select {
-    width: 100%;
+    width: 40%;
     margin-bottom: 5px;
+    padding:10px;
+    background-color:#00000099;
     border: 1px solid #999 !important;
+    border-radius:10px;
+    color:white;
 }
 
 .chatbox input, .chatbox select, .chatbox textarea {
-    border-radius: 10px;
+    border-radius: 30px;
 }
 
 input[type=checkbox] {
@@ -214,11 +217,23 @@ input[type=checkbox] {
 }
 
 .modal-dialog {
-    width: 600px;
+    max-width: 350px;
 }
 
 .modal-content {
+    color:black;   
 }
+
+.modal-content input,.modal-content select 
+{
+    color: black;
+    background-color: white;
+}
+
+    .modal-content input, .modal-content select, .modal-content button
+    {
+        width:100%;
+    }
 
     .modal-content button {
         margin-bottom: 7px;
@@ -299,8 +314,11 @@ input[type=checkbox] {
     transition: top 0.5s ease-in-out;
     z-index:1;
     overflow-x:hidden;
+}
+
+.activeParty > .row
+{
     padding: 80px 50px 50px 50px;
-    background-color: #151515;
 }
 
 .activeParty .flyer
@@ -349,3 +367,37 @@ p.participantwidget img {
     p.participantwidget img:nth-child(3) {
         margin-left: 30px;
     }
+.partyback {
+    height: 100vh;
+    position: absolute;
+    width:100vw;
+    background-color: #151515;
+    z-index:-2;
+    background-size:cover;
+    filter:grayscale(.2) brightness(1);
+}
+.partygradient {
+    height: 100vh;
+    position: absolute;
+    width: 100vw;
+    z-index: -1;
+    background: rgb(21,21,21);
+}
+.alert
+{
+    width:100%;
+    margin:10px 0px;
+    padding:5px 10px;
+}
+.navlogin
+
+{
+    position:absolute;
+    right:80px;
+    text-align:right;
+}
+.navlogin a
+
+{
+    text-align:right;
+}

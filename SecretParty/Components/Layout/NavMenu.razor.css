@@ -60,7 +60,7 @@
     }
 
     .nav-item ::deep .nav-link {
-        color: black;
+        color: white;
         background: none;
         border: none;
         border-radius: 4px;

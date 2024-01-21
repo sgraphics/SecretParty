@@ -9,6 +9,11 @@ using SecretParty.Model;
 
 namespace SecretParty.Controllers
 {
+	public class LoginRequest
+	{
+		public string Email { get; set; }
+		public string Gender { get; set; }
+	}
 
 	[Route("api/[controller]")]
 	[ApiController]
@@ -19,7 +24,30 @@ namespace SecretParty.Controllers
 		public async Task<ActionResult> AuthenticateToken(string token)
 		{
 			await userService.FinishLogin(token);
-			return Redirect("/chat");
+			return Redirect("/");
+		}
+
+		[HttpGet]
+		[Route("userInfo")]
+		public async Task<ActionResult> UserInfo()
+		{
+			if (Request?.HttpContext?.User?.Identity?.Name == null)
+			{
+				return new JsonResult(null);
+			}
+			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
+			var partiesTable = serviceClient.GetTableClient("Users");
+			await partiesTable.CreateIfNotExistsAsync();
+			var user = await partiesTable.GetEntityAsync<User>(string.Empty, Request.HttpContext.User.Identity.Name);
+			return new JsonResult(user.Value);
+		}
+
+		[HttpPost]
+		[Route("startLogin")]
+		public async Task<ActionResult> StartLogin(LoginRequest login)
+		{
+			var token = await userService.StartLogin(login.Email, login.Gender);
+			return Ok();
 		}
 
 		[HttpGet]
@@ -53,7 +81,29 @@ namespace SecretParty.Controllers
 			}
 			return new JsonResult(parties);
 		}
-		
+
+		[HttpGet]
+		[Route("getParticipation")]
+		public async Task<ActionResult> GetParticipation(string partyId)
+		{
+			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
+			var participantsTable = serviceClient.GetTableClient("Participant");
+			await participantsTable.CreateIfNotExistsAsync();
+			try
+			{
+				var user = Request.HttpContext.User.Identity.Name;
+				var participant = await participantsTable
+					.QueryAsync<Participant>(x => x.PartitionKey == partyId && x.User == user)
+					.FirstOrDefaultAsync();
+
+				return new JsonResult(participant);
+			}
+			catch
+			{
+				return new JsonResult(null);
+			}
+		}
+
 		[HttpGet]
 		[Route("createParties")]
 		public async Task<ActionResult> CreateParties()
@@ -140,6 +190,30 @@ The answer need to be in json array format (to support multiple parties).
 			});
 		}
 
+		[HttpPost]
+		[Route("generatePhoto")]
+		public async Task<ActionResult> GeneratePhoto(Participant participant)
+		{
+			await CreatePhotosAndStoreParticipant(participant, null);
+			return new JsonResult(new Photo { Url = participant.Photo, ThumbUrl = participant.PhotoThumb });
+		}
+
+		[HttpPost]
+		[Route("participate")]
+		public async Task<ActionResult> Participate(Participant participant)
+		{
+			if (string.IsNullOrWhiteSpace(participant.Photo) || string.IsNullOrWhiteSpace(participant.Name) || string.IsNullOrWhiteSpace(participant.PartitionKey))
+			{
+				return BadRequest("Invalid participation, missing fields");
+			}
+			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
+			var participantsTable = serviceClient.GetTableClient("Participant");
+			await participantsTable.CreateIfNotExistsAsync();
+			participant.User = Request.HttpContext.User.Identity.Name;
+			await participantsTable.UpsertEntityAsync(participant);
+			return Ok();
+		}
+
 		[HttpGet]
 		[Route("addParticipant")]
 		public async Task<ActionResult> AddParticipant(string partyId)
@@ -180,13 +254,35 @@ The answer need to be in json array format (to support multiple parties).
 			});
 		}
 
-		private async Task CreatePhotosAndStoreParticipant(Participant participant, TableClient participantsTable)
+		private async Task CreatePhotosAndStoreParticipant(Participant participant, TableClient? participantsTable)
 		{
-			var image = await aiProxy.CreateImage(participant.Description);
+			string participantDescription;
+			if (!string.IsNullOrWhiteSpace(participant.Description))
+			{
+				participantDescription = participant.Description;
+			}
+			else
+			{
+				var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
+				var partiesTable = serviceClient.GetTableClient("Party");
+				var partition = DateTimeOffset.UtcNow.ToString("yy-MM-dd");
+				await partiesTable.CreateIfNotExistsAsync();
+				var party = (await partiesTable.GetEntityAsync<Party>(partition, participant.PartitionKey)).Value;
+				var prompt = @$"The photo background, clothing, vibe etc should reflect the party atmosphere, there ofcourse should be other people, partygoers, in the background and the participant should be sexy, enticing, flirty, handsom/cute. The participant should be of age {participant.Age}. The prompt can optionally detail the participant doing something like holding drink, dancing, showing some had sign, etc. The participant characteristics: hairstyle: {participant.HairStyle}, gender: {participant.Gender}, ethnicity: {participant.Ethnicity}. This is the party description: " + party.Description + ". Music style: " + party.MusicStyle + ". Dresscode: " + party.DressCode;
+				participantDescription = await aiProxy.ThinkStream(new List<AiMessageRecord>
+				{
+					new (AiMessageRole.System, "Generate a prompt for DALL-E to create a photo of a specific participant at a specific party. IMPORTANT: you must only answer with the prompt, not other text is allowed."),
+					new(AiMessageRole.User, prompt)
+				});
+			}
+			var image = await aiProxy.CreateImage(participantDescription);
 			var photo = await userService.UploadPhoto(image);
 			participant.Photo = photo.Url;
 			participant.PhotoThumb = photo.ThumbUrl;
-			await participantsTable.UpsertEntityAsync(participant);
+			if (participantsTable != null)
+			{
+				await participantsTable.UpsertEntityAsync(participant);
+			}
 		}
 
 		private async Task CreatePhotos(Party participant)

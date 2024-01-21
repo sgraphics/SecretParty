@@ -3,10 +3,8 @@
 
 <PageTitle>SecretParty Chat</PageTitle>
 @using System.Text.RegularExpressions
-@using Azure.AI.OpenAI
 @using BootstrapBlazor.Components
 @using Microsoft.AspNetCore.Components.Authorization
-@inject IConfiguration Configuration
 @inject IJSRuntime JsRuntime
 @inject IUserService UserService
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
@@ -81,7 +79,7 @@ else
 		<div class="col col-12">
 			<img src="img/send.webp" @onclick="SendMessage" class="sendimage @(sending ? "disabled" : String.Empty)" alt="send chat to AI" />
 			<div class="textcontainer">
-				<textarea placeholder="Chat with Lisa M" rows="3" @bind="messageToSend"></textarea>
+				<textarea placeholder="Chat with Lisa M" rows="1" @bind="messageToSend"></textarea>
 			</div>
 		</div>
 	</div>
@@ -277,7 +275,7 @@ else
 			return;
 		}
 		_error = null;
-		await UserService.StartLogin(NewEmail);
+		await UserService.StartLogin(NewEmail, "M");
 		_waitingForToken = true;
 	}
 

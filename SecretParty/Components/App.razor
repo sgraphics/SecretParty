@@ -46,12 +46,13 @@
 </head>
 
 <body>
-<Routes />
-	<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
-	<script src="_content/AzureMapsControl.Components/azure-maps-control.min.js"></script>
-	<script src="azure-maps-control.min.js"></script>
-	<script src="_framework/blazor.web.js"></script>
-	<script src="_content/BootstrapBlazor/js/bootstrap.blazor.bundle.min.js"></script>
+
+<Routes/>
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<script src="_content/AzureMapsControl.Components/azure-maps-control.min.js"></script>
+<script src="azure-maps-control.min.js"></script>
+<script src="_framework/blazor.web.js"></script>
+<script src="_content/BootstrapBlazor/js/bootstrap.blazor.bundle.min.js"></script>
 <script type="text/javascript">
 		function InitializeSqPaymentForm(caller, method) {
 			const payments = Square.payments('@Configuration["SquareApplicationId"]', '@Configuration["SquareLocation"]');
@@ -99,7 +100,7 @@
 		}
 
 	</script>
-	<script>
+<script>
 
 		window.getCoords = async () => {
 			const pos = await new Promise((resolve, reject) => {
@@ -122,7 +123,7 @@
 			};
 		});
 	</script> *@
-	<script>
+<script>
 		class GreetingHelpers {
 			static dotNetHelper;
 			static setDotNetHelper(value) {

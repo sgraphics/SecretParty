@@ -8,10 +8,14 @@
 @using SecretParty.Model
 @using AzureMapsControl.Components.Atlas
 @using AzureMapsControl.Components.Popups
+@using System.Text.RegularExpressions
+@using BootstrapBlazor.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject IBlazrRenderStateService RenderState
 @inject IJSRuntime JsRuntime
 @inject NavigationManager Navigation
-
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
 
 <PageTitle>Secret Party Club</PageTitle>
 
@@ -22,9 +26,74 @@
 }
 
 <div class="activeParty @(_activeParty != null ? "active" : "notactive")">
-
-	@if (_activeParty != null)
+	@if (_existingParticipant != null && _activeParty != null)
 	{
+		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
+		<div class="row">
+			<div class="col col-12 partypage">
+				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
+				<img class="flyer" src="@_existingParticipant.Photo" />
+				<h2>Avatar</h2>
+				<span><b>Name:</b> @_existingParticipant.Name</span>
+				<span><b>Hair style:</b>@_existingParticipant.HairStyle</span>
+				<span><b>Ethnicity:</b> @_existingParticipant.Ethnicity</span>
+				<span><b>Gender:</b> @_existingParticipant.Gender</span>
+				<button @onclick="RecreateAvatar" class="btn-secondary">New avatar</button>
+				<button @onclick="Chat">Start mingling</button>
+			</div>
+		</div>
+	}
+	else if (_newParticipant != null && _activeParty != null)
+	{
+		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
+		<div class="row">
+			<div class="col col-12 partypage">
+				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
+				@if (!string.IsNullOrWhiteSpace(_newParticipant.Photo))
+				{
+					<img class="flyer" src="@_newParticipant.Photo" />
+				}
+				<h2>Create an avatar for the party</h2>
+				<span><b>Name:</b></span>
+				<input type="text" @bind=@_newParticipant.Name placeholder="E.g. Alex M" />
+				<span><b>Hair style:</b></span>
+				<input type="text" @bind=@_newParticipant.HairStyle placeholder="E.g. Blonde long/Black short curly" />
+				<span><b>Ethnicity:</b></span>
+				<input type="text" @bind=@_newParticipant.Ethnicity placeholder="E.g. Black/White/Asian" />
+				<span><b>Gender:</b></span>
+				<select value="@NewGender" disabled="disabled">
+					<option value="M">Male</option>
+					<option value="F">Female</option>
+				</select>
+				@if (_busy)
+				{
+					<button disabled="disabled" class="btn-secondary">Generating...</button>
+				}
+				else if (string.IsNullOrWhiteSpace(_newParticipant.Photo))
+				{
+					<button @onclick="Generate">Generate photo</button>
+				}
+				else
+				{
+					@if (_tries >= 3)
+					{
+						<button disabled="disabled" class="btn-secondary">Regenerate</button>
+					}
+					else
+					{
+						<button @onclick="Generate" class="btn-secondary">Regenerate (@(3 - _tries) left)</button>
+					}
+					<button @onclick="Chat">Start mingling</button>
+				}
+			</div>
+		</div>
+	}
+	else if (_activeParty != null)
+	{
+		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
 		<div class="row">
 			<div class="col col-12 partypage">
 				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
@@ -44,8 +113,8 @@
 					}
 					<span>@(_activeParty.ParticipantCount) Active Participants</span>
 				</p>
-
-				<button @onclick="Join">Join @_activeParty.PartyName</button>
+				
+				<button @onclick="Join">Attend @_activeParty.PartyName</button>
 			</div>
 		</div>
 	}
@@ -57,25 +126,83 @@
 		  EventActivationFlags="MapEventActivationFlags.None().Enable(MapEventType.Ready)"
 		  OnReady="OnMapReadyAsync" />
 
+
+<Modal @ref="modal">
+	<ModalDialog Title="Register/login" ShowCloseButton="false">
+
+		<BodyTemplate>
+			<div class="row">
+				<h4>First things first</h4>
+				<p>
+					Register now to confirm you are a human to join the party!
+				</p>
+			</div>
+		</BodyTemplate>
+		<FooterTemplate>
+			@if (!_waitingForToken)
+			{
+				@if (!string.IsNullOrWhiteSpace(_error))
+				{
+					<div class="alert alert-warning">@_error</div>
+				}
+				<input type="text" placeholder="E-mail" @bind="NewEmail" />
+				<span>Gender:</span>
+				<InputSelect @bind-Value="@NewGender">
+					<option value="M">Male</option>
+					<option value="F">Female</option>
+				</InputSelect>
+				<button value="Subscribe now" @onclick="Subscribe">Confirm</button>
+			}
+			else
+			{
+				<h5>Check your email!</h5>
+				@if (!string.IsNullOrWhiteSpace(_error))
+				{
+					<div class="alert alert-warning">@_error</div>
+				}
+				<input type="text" placeholder="Login code" @bind="Token" />
+				<button value="Subscribe now" @onclick="ConfirmCode">Confirm code</button>
+				<button value="Re-send code" class="btn-secondary" @onclick="() => _waitingForToken = false">Re-send code</button>
+			}
+		</FooterTemplate>
+	</ModalDialog>
+
+</Modal>
+
 @code {
 	private (double, double) Coordinates;
 	private bool Init;
+
+	private int _tries;
+	private string? _error = null;
+	private string? Token = null;
+
+	private bool _waitingForToken = false;
+
+	private Modal modal;
+	private string? NewEmail;	
+
+	private string? NewGender = "M";
+
+	private bool _busy;
 
 	protected string CurrentLatitude =>
 		Coordinates.Item1.ToString("F2");
 	protected string CurrentLongitude =>
 		Coordinates.Item2.ToString("F2");
+	public string? Email { get; set; }
 
 	private Party? _activeParty;
+	private Participant? _newParticipant;
 
 	IDictionary<string, HtmlMarker> _markers = new Dictionary<string, HtmlMarker>();
 	IDictionary<string, Party> _parties = new Dictionary<string, Party>();
 	private DotNetObjectReference<Counter> objRef;
+	private Participant? _existingParticipant;
 
-	protected override async Task OnParametersSetAsync()
-	{
-		await base.OnParametersSetAsync();
-	}
+	[CascadingParameter]
+	private Task<AuthenticationState>? authenticationState { get; set; }
+
 	protected override void OnInitialized()
 	{
 		objRef = DotNetObjectReference.Create(this);
@@ -96,7 +223,7 @@
 		_parties = parties.ToDictionary(x => x.RowKey);
 		foreach (var party in parties)
 		{
-			var point = GeoUtils.GenerateRandomPoint(Coordinates.Item1, Coordinates.Item2, 30);
+			var point = GeoUtils.GenerateRandomPoint(Coordinates.Item1, Coordinates.Item2, 200);
 
 
 			var htmlMarker = new HtmlMarker(
@@ -116,7 +243,7 @@
 				<br/>
 	<span><b>Music style:</b> {party.MusicStyle}</span>
 	<span><b>Style:</b> {party.DressCode}</span>
-	<button onclick=""GreetingHelpers.openParty('{party.RowKey}');"">More info</button>
+	<button onclick=""GreetingHelpers.openParty('{party.RowKey}');"">Open</button>
 </div>",
 							Position = new Position(point.Item2, point.Item1),
 							FillColor = "white",
@@ -160,6 +287,12 @@
 	public async Task OpenParty(string guid)
 	{
 		await _markers[guid].Options.Popup.CloseAsync();
+		await TryLogin();
+		if (string.IsNullOrWhiteSpace(Email))
+		{
+			await modal.Show();
+			return;
+		}
 		_activeParty = _parties[guid];
 		StateHasChanged();
 	}
@@ -179,9 +312,115 @@
 	}
 	public void Dispose() => objRef?.Dispose();
 
-	private Task Join()
+	private async Task Join()
 	{
-		throw new NotImplementedException();
+		_tries = 0;
+		try
+		{
+			_existingParticipant = await $"{Navigation.BaseUri}api/SecretParty/getParticipation?partyId={_activeParty.RowKey}".GetJsonAsync<Participant>();
+		}
+		catch
+		{
+			
+		}
+		if (_newParticipant == null)
+		{
+			_newParticipant = new Participant { PartitionKey = _activeParty.RowKey, Age = "24", Gender = NewGender };
+		}
+	}
+
+	private async Task Generate()
+	{
+		_tries++;
+		_busy = true;
+		try
+		{
+			if (string.IsNullOrWhiteSpace(_newParticipant.Name) || string.IsNullOrWhiteSpace(_newParticipant.HairStyle) || string.IsNullOrWhiteSpace(_newParticipant.Name) || string.IsNullOrWhiteSpace(_newParticipant.Ethnicity) || string.IsNullOrWhiteSpace(_newParticipant.Gender))
+			{	
+				await JsRuntime.InvokeVoidAsync("alert", "Please fill all fields");
+				return;
+			}
+
+			var photo = await $"{Navigation.BaseUri}api/SecretParty/generatePhoto".PostJsonAsync(_newParticipant).ReceiveJson<Photo>();
+			
+			_newParticipant.Photo = photo.Url;
+			_newParticipant.PhotoThumb = photo.ThumbUrl;
+		}
+		finally
+		{
+			_busy = false;
+		}
+	}
+
+	private async Task Chat()
+	{
+		if (_existingParticipant != null)
+		{
+			Navigation.NavigateTo("/chat?party=" + _activeParty.RowKey);
+			return;
+		}
+		var photo = await $"{Navigation.BaseUri}api/SecretParty/participate".PostJsonAsync(_newParticipant);
+		if (photo.ResponseMessage.IsSuccessStatusCode)
+		{
+			Navigation.NavigateTo("/chat?party=" + _activeParty.RowKey);
+		}
+		else
+		{
+			await JsRuntime.InvokeVoidAsync("alert", "Error registering participation, please try again");
+		}
+	}
+
+	private async Task Subscribe()
+	{
+		var regex = new Regex("^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$");
+
+		if (string.IsNullOrWhiteSpace(NewEmail) || !regex.IsMatch(NewEmail?.ToLower()))
+		{
+			_error = "Invalid Email";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(NewGender))
+		{
+			_error = "Gender not specified";
+			return;
+		}
+		_error = null;
+		_waitingForToken = true;
+		await $"{Navigation.BaseUri}api/SecretParty/startLogin".PostJsonAsync(new { email = NewEmail, gender = NewGender });
+	}
+
+	private async Task ConfirmCode()
+	{
+		if (string.IsNullOrWhiteSpace(Token))
+		{
+			_error = "Please enter token";
+			return;
+		}
+		_error = null;
+		Navigation.NavigateTo("/api/SecretParty/authenticateToken?token=" + Token, true);
+	}
+	private async Task TryLogin()
+	{
+		if (!string.IsNullOrWhiteSpace(Email))
+		{
+			return;
+		}
+		var authstate = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+		var user = authstate.User;
+		Email = user.Identity.Name;
+		NewGender = user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Gender)?.Value;
+	}
+
+
+	private async Task RecreateAvatar()
+	{
+		bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure you wish to abandon this avatar and restart a new one?");
+		if (confirmed)
+		{
+			_existingParticipant = null;
+			await Join();
+		}
 	}
 
 }

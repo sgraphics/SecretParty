@@ -36,7 +36,7 @@ public class UserService : IUserService
 		return usersTable;
 	}
 
-	public async Task<string> StartLogin(string email)
+	public async Task<string> StartLogin(string email, string gender)
 	{
 		email = email.ToLower();
 		var serviceClient = new TableServiceClient(_configuration["AzureWebJobsStorage"]);
@@ -46,15 +46,22 @@ public class UserService : IUserService
 		await usersTable.CreateIfNotExistsAsync();
 		//create token
 		var token = new Random().Next(100000000, 999999999).ToString();
-		await usersTable.UpsertEntityAsync(new TableEntity(string.Empty, email)
+		try
 		{
-		});
+			await usersTable.GetEntityAsync<TableEntity>(string.Empty, email);
+		}
+		catch
+		{
+			await usersTable.UpsertEntityAsync(new TableEntity(string.Empty, email)
+			{
+				{ "Gender", gender == "F" ? "F" : "M" },
+			});
+		}
 		await tokensTable.UpsertEntityAsync(new TableEntity(email, token)
 		{
 			{ "Expiry", DateTimeOffset.UtcNow.AddHours(1) },
 		});
 
-		var url = $"{_httpContextAccessor.HttpContext?.Request.Path}?token={token}";
 		//send email
 		await _emailSender.SendEmailAsync(
 			email,
@@ -79,13 +86,18 @@ public class UserService : IUserService
 		// Replace this with your logic to fetch the email from the table storage
 		var userEmail = await FetchEmailFromToken(token);
 
+		var serviceClient = new TableServiceClient(_configuration["AzureWebJobsStorage"]);
+		var usersTable = serviceClient.GetTableClient("Users");
+		await usersTable.CreateIfNotExistsAsync();
+		var user = await usersTable.GetEntityAsync<TableEntity>(string.Empty, userEmail);
+
 		if (!string.IsNullOrEmpty(userEmail))
 		{
 			var claims = new List<Claim>
 			{
 				new Claim(ClaimTypes.Email, userEmail),
 				new Claim(ClaimTypes.Name, userEmail),
-				// Add other claims as needed
+				new Claim(ClaimTypes.Gender, user.Value.GetString("Gender")),
 			};
 
 			var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

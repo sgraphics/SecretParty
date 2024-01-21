@@ -9,6 +9,17 @@ namespace SecretParty.Model
 		public string Url { get; set; }
 		public string ThumbUrl { get; set; }
 	}
+
+	public class User : ITableEntity
+	{
+		public string PartitionKey { get; set; }
+		public string RowKey { get; set; }
+		public DateTimeOffset? Timestamp { get; set; }
+		public ETag ETag { get; set; }
+		
+		public string Gender { get; set; }
+	}
+
 	public class Participant : ITableEntity
 	{
 		public string PartitionKey { get; set; }
@@ -23,20 +34,26 @@ namespace SecretParty.Model
 
 		public string? PhotoThumb { get; set; }
 
+		public string? HairStyle { get; set; }
+
+		public string? Ethnicity { get; set; }
+
 		[JsonPropertyName("name")]
-		public string Name { get; init; }
+		public string Name { get; set; }
 
 		[JsonPropertyName("gender")]
-		public string Gender { get; init; }
+		public string Gender { get; set; }
 
 		[JsonPropertyName("age")]
-		public string Age { get; init; }
+		public string Age { get; set; }
 
 		[JsonPropertyName("photoPrompt")]
-		public string Description { get; init; }
+		public string? Description { get; set; }
 
 		[JsonPropertyName("chattingStyle")]
-		public string ChattingStyle { get; init; }
+		public string? ChattingStyle { get; set; }
+
+		public string? User { get; set; }
 	};
 
 	public class Party : ITableEntity
