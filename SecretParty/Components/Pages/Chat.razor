@@ -2,14 +2,16 @@
 @rendermode InteractiveServer
 
 <PageTitle>SecretParty Chat</PageTitle>
-@using System.Text.RegularExpressions
 @using BootstrapBlazor.Components
+@using Flurl.Http
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Mvc
+@using SecretParty.Model
 @inject IJSRuntime JsRuntime
-@inject IUserService UserService
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject AiProxy AiProxy
 @inject NavigationManager NavigationManager;
+@inject ChatService ChatService
 
 @if (_messages == null)
 {
@@ -86,37 +88,46 @@ else
 }
 
 <Modal @ref="modal">
-	<ModalDialog Title="Register" ShowCloseButton="false">
+	<ModalDialog Title="Note" ShowCloseButton="false">
 
 		<BodyTemplate>
 			<div class="row">
-				<h4>First things first</h4>
-				<p>
-					Register now to confirm you are a human to join the party!
-				</p>
+				@if (_chat?.Participant2Id != null)
+				{
+
+					<h4>Start mingling</h4>
+					<p>
+						You are chatting with Lisa L, the goal is to guess whether she is an AI or real human. If you guess correctly you get one point.
+						<br />
+						But do it quickly, if she is a human and guesses correctly she gets the point and you lose.
+
+					</p>
+
+				}
+				else
+				{
+					<h4>Chill</h4>
+					<p>
+						Seems everyone's busy and no-one to talk to. Sounds like its time for a drink!
+					</p>
+				}
 			</div>
 		</BodyTemplate>
 		<FooterTemplate>
-			@if (!_waitingForToken)
-			{
-				@if (!string.IsNullOrWhiteSpace(_error))
-				{
-					<div class="alert alert-warning">@_error</div>
-				}
-				<input type="text" placeholder="E-mail" @bind="NewEmail" />
-				<button value="Subscribe now" @onclick="Subscribe">Confirm</button>
 
+			@if (_busy)
+			{
+				<button disabled="disabled" class="btn-secondary">Please wait...</button>
+			}
+			else if (_chat?.Participant2Id != null)
+			{
+
+				<button value="Subscribe now" @onclick="() => modal.Close()">Chat</button>
 			}
 			else
 			{
-				<h5>Check your email!</h5>
-				@if (!string.IsNullOrWhiteSpace(_error))
-				{
-					<div class="alert alert-warning">@_error</div>
-				}
-				<input type="text" placeholder="Login code" @bind="Token" />
-				<button value="Subscribe now" @onclick="ConfirmCode">Confirm code</button>
-				<button value="Re-send code" class="btn-secondary" @onclick="() => _waitingForToken = false">Re-send code</button>
+				<button class="btnPrimary" @onclick="Retry">Try again</button>
+
 			}
 		</FooterTemplate>
 	</ModalDialog>
@@ -126,27 +137,14 @@ else
 
 @code {
 	[Parameter]
-	[SupplyParameterFromQuery(Name = "register")]
-	public string? Register { get; set; }
-
-	private bool ShowRegistration() => !string.IsNullOrWhiteSpace(Register) && Register.ToLower() == "true";
-	private string _size = "1024x1024";
-	private string _style = "vivid";
-
-	private string? _error = null;
-	private string? Token = null;
-
-	private bool _waitingForToken = false;
+	[SupplyParameterFromQuery(Name = "party")]
+	public string? PartyId { get; set; }
 
 	private Modal modal;
-	private Modal subscribeModal;
 
 	public bool _scrollDone;
 
 	private string? messageToSend;
-	private string? Email;
-
-	private string? NewEmail;
 
 	private string writeOut;
 
@@ -156,11 +154,37 @@ else
 
 	private SortedList<DateTimeOffset, Message> _messages;
 
+	private bool _init;
+	private bool _busy;
+
+	private async Task Retry()
+	{
+		_busy = true;
+		try
+		{
+			if (_chat?.Participant2Id != null)
+			{
+				return;
+			}
+			_chat = await ChatService.StartChat(PartyId!);
+		}
+		finally
+		{
+			_busy = false;
+		}
+	}
+
 	protected override async Task OnParametersSetAsync()
 	{
 		await base.OnParametersSetAsync();
 
-		await TryLogin();
+		if (_init)
+		{
+			return;
+		}
+		_chat = await ChatService.StartChat(PartyId!);
+
+		_init = true;
 
 		_messages = new SortedList<DateTimeOffset, Message>();
 	}
@@ -170,34 +194,20 @@ else
 		await base.OnAfterRenderAsync(firstRender);
 		if (firstRender)
 		{
-			if (string.IsNullOrWhiteSpace(Email) && ShowRegistration())
+			Task.Run(async () =>
 			{
-				Task.Run(async () =>
-				{
-					await Task.Delay(200);
-					await modal.Show();
-					StateHasChanged();
-				});
-			}
+				await Task.Delay(200);
+				await modal.Show();
+			});
 		}
 	}
 
-	private async Task TryLogin()
-	{
-		var authstate = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
-		var user = authstate.User;
-		Email = user.Identity.Name;
-	}
 
 	private bool sending;
+	private ChatData _chat;
 
 	private async Task SendMessage()
 	{
-		if (string.IsNullOrWhiteSpace(Email))
-		{
-			await modal.Show();
-			return;
-		}
 		if (sending)
 		{
 			return;
@@ -263,31 +273,6 @@ else
 				aiMessageRecords.Add(new AiMessageRecord(message.Value.IsHuman ? AiMessageRole.User : AiMessageRole.Assistant, message.Value.Text));
 			}
 		}
-	}
-
-	private async Task Subscribe()
-	{
-		var regex = new Regex("^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$");
-
-		if (string.IsNullOrWhiteSpace(NewEmail) || !regex.IsMatch(NewEmail?.ToLower()))
-		{
-			_error = "Invalid Email";
-			return;
-		}
-		_error = null;
-		await UserService.StartLogin(NewEmail, "M");
-		_waitingForToken = true;
-	}
-
-	private async Task ConfirmCode()
-	{
-		if (string.IsNullOrWhiteSpace(Token))
-		{
-			_error = "Please enter token";
-			return;
-		}
-		_error = null;
-		NavigationManager.NavigateTo("/api/SecretParty/authenticateToken?token=" + Token, true);
 	}
 
 }

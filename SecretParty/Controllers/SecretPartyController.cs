@@ -26,6 +26,7 @@ namespace SecretParty.Controllers
 			await userService.FinishLogin(token);
 			return Redirect("/");
 		}
+		
 
 		[HttpGet]
 		[Route("userInfo")]

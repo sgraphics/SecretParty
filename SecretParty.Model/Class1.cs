@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Runtime.Serialization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Azure;
 using Azure.Data.Tables;
 
@@ -54,6 +56,7 @@ namespace SecretParty.Model
 		public string? ChattingStyle { get; set; }
 
 		public string? User { get; set; }
+		public string? ActiveChatId { get; set; }
 	};
 
 	public class Party : ITableEntity
@@ -101,4 +104,40 @@ namespace SecretParty.Model
 		public int ParticipantCount { get; set; }
 		public List<string> SomePhotos { get; set; } = new();
 	};
+
+	public class ChatData : ITableEntity
+	{
+		public string PartitionKey { get; set; } = string.Empty;
+
+		public string RowKey { get; set; } = Guid.NewGuid().ToString();
+
+		public DateTimeOffset? Timestamp { get; set; }
+
+		public ETag ETag { get; set; }
+
+		public string Participant1Id { get; set; }
+		public string Participant1Name { get; set; }
+		public string Participant1Age { get; set; }
+		public string? Participant2Id { get; set; }
+		public string? Participant2Name { get; set; }
+		public string? Participant2Age { get; set; }
+		public Party Party { get; set; }
+
+		[IgnoreDataMember]
+		public List<ChatMessageData> History { get; set; } = new();
+
+		[JsonIgnore]
+		public string HistoryJson
+		{
+			get => JsonSerializer.Serialize(History);
+			set => History = JsonSerializer.Deserialize<List<ChatMessageData>>(value);
+		}
+	}
+
+	public class ChatMessageData
+	{
+		public string ParticipantId { get; set; }
+		public DateTimeOffset Timestamp { get; set; }
+		public string Message { get; set; }
+	}
 }
