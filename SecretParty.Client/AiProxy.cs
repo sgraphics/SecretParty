@@ -176,8 +176,9 @@ namespace SecretParty.Client
 			}
 			else
 			{
-				Console.WriteLine($"Error: {response.StatusCode}");
-				throw new Exception(responseTExt);
+				var error = $"Error: {response.StatusCode}";
+				Console.WriteLine(error);
+				return error;
 			}
 		}
 

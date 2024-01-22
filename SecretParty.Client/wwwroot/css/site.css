@@ -349,6 +349,10 @@ p.participantwidget
 {
     height:50px;
 }
+.hotornot p.participantwidget
+{
+    height:30px;
+}
 p.participantwidget span
 {
     margin-left:80px;

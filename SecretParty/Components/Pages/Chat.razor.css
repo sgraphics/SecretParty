@@ -83,11 +83,12 @@
     height: 100vh;
     position: fixed;
     top: 0;
-    padding-bottom: 250px;
+    padding-bottom: 110px;
     width: 100%;
     display: flex;
     flex-direction: column-reverse;
-    width: calc(100% - 30px);
+    width: 100%;
+    left:0;
     overflow-x: hidden;
 }
 
@@ -340,13 +341,13 @@ h2 sup
 .hotornot
 {
     position:absolute;
-    top:50px;
+    top:60px;
     z-index:1000;
     background-color: white;
-    width:450px;
-    margin-left:calc(50vw - 270px);
+    width:370px;
+    margin-left:calc(50vw - 210px);
     margin-right:auto;
-    padding:20px;
+    padding:10px;
     color:black;
     border-radius:20px;
 }

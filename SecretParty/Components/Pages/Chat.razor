@@ -1,5 +1,5 @@
 ﻿@page "/chat"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(false))
 
 <PageTitle>SecretParty Chat</PageTitle>
 @using BootstrapBlazor.Components
@@ -80,7 +80,7 @@ else
 	{
 		<div class="hotornot">
 			<div class="row">
-				<div clas="col col-3">
+				<div clas="col col-1">
 
 					<p class="participantwidget">
 						<a href="@_chat.OtherParticipant.Photo" target="_blank">
@@ -88,9 +88,9 @@ else
 						</a>
 					</p>
 				</div>
-				<div clas="col col-3">Is @_chat.OtherParticipant.Name human?</div>
-				<div clas="col col-3"><button @onclick="() => EndChat(true)">AI</button></div>
+				<div clas="col col-5">Is @_chat.OtherParticipant.Name human?</div>
 				<div clas="col col-3"><button @onclick="() => EndChat(false)">human</button></div>
+				<div clas="col col-3"><button @onclick="() => EndChat(true)">AI</button></div>
 			</div>
 		</div>
 	}
