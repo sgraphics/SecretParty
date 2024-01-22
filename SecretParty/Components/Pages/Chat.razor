@@ -37,16 +37,6 @@ else
 				<div class="col">&nbsp;</div>
 			</div>
 		}
-		@if (!string.IsNullOrWhiteSpace(writeOut))
-		{
-			<div class="row">
-				<div class="col col-md-auto translateBetterpod ischat">
-					<img src="img/say_aiv.webp" class="say_aiv" />
-					<div class="chatbubble">@((MarkupString)writeOut.Replace("\n", "<br/>"))</div>
-				</div>
-				<div class="col">&nbsp;</div>
-			</div>
-		}
 		@foreach (var request in _messages.Values.Reverse())
 		{
 			<div class="row">
@@ -88,38 +78,34 @@ else
 }
 
 <Modal @ref="modal">
-	<ModalDialog Title="Note" ShowCloseButton="false">
+	<ModalDialog Title="Message" ShowCloseButton="false">
 
 		<BodyTemplate>
 			<div class="row">
-				@if (_chat?.Participant2Id != null)
+				@if (_chat?.OtherParticipant != null)
 				{
-
 					<h4>Start mingling</h4>
 					<p>
-						You are chatting with Lisa L, the goal is to guess whether she is an AI or real human. If you guess correctly you get one point.
-						<br />
-						But do it quickly, if she is a human and guesses correctly she gets the point and you lose.
-
+						You are chatting with @_chat.OtherParticipant.Name (@_chat.OtherParticipant.Age), the goal is to guess whether @_chat.GetOtherPronoun() is an AI or real human. If you guess correctly you get one point.
+						<br /><br />
+						But do it quickly, if @_chat.GetOtherPronoun() <i>is</i> a human and guesses correctly before you then @_chat.GetOtherPronoun() gets the point instead.
 					</p>
-
 				}
 				else
 				{
 					<h4>Chill</h4>
 					<p>
-						Seems everyone's busy and no-one to talk to. Sounds like its time for a drink!
+						Seems everyone's busy and no-one to talk to. Sounds like it's time for a drink!
 					</p>
 				}
 			</div>
 		</BodyTemplate>
 		<FooterTemplate>
-
 			@if (_busy)
 			{
 				<button disabled="disabled" class="btn-secondary">Please wait...</button>
 			}
-			else if (_chat?.Participant2Id != null)
+			else if (_chat?.OtherParticipant != null)
 			{
 
 				<button value="Subscribe now" @onclick="() => modal.Close()">Chat</button>
@@ -146,8 +132,6 @@ else
 
 	private string? messageToSend;
 
-	private string writeOut;
-
 	private record Message(string Text, DateTimeOffset Timestamp, string Id, bool IsHuman, bool IsChat, bool IsError = false, string? img = null)
 	{
 	}
@@ -162,7 +146,7 @@ else
 		_busy = true;
 		try
 		{
-			if (_chat?.Participant2Id != null)
+			if (_chat?.OtherParticipant != null)
 			{
 				return;
 			}
@@ -182,29 +166,21 @@ else
 		{
 			return;
 		}
+		_init = true;
 		_chat = await ChatService.StartChat(PartyId!);
 
-		_init = true;
+		await modal.Show();
 
 		_messages = new SortedList<DateTimeOffset, Message>();
-	}
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		await base.OnAfterRenderAsync(firstRender);
-		if (firstRender)
+		foreach (var chatMessageData in _chat.History)
 		{
-			Task.Run(async () =>
-			{
-				await Task.Delay(200);
-				await modal.Show();
-			});
+			_messages.Add(chatMessageData.Timestamp, new Message(chatMessageData.Message, chatMessageData.Timestamp, Guid.NewGuid().ToString(), chatMessageData.ParticipantId == _chat.Participant.RowKey, true));
 		}
 	}
 
-
 	private bool sending;
-	private ChatData _chat;
+	private ChatData? _chat;
 
 	private async Task SendMessage()
 	{
@@ -220,40 +196,25 @@ else
 				return;
 			}
 
-
 			var newChat = messageToSend;
 
 			_messages.Add(DateTimeOffset.Now, new Message(messageToSend ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), true, true));
 
 			messageToSend = null;
 
-			//input chat
-			var pastChatsString = string.Join("\r\n", _messages.Where(x => x.Value.IsChat).TakeLast(20).Select(p => $"{(p.Value.IsHuman ? "friend" : "me")}: {p.Value.Text}"));
-
 			StateHasChanged();
+
 			await JsRuntime.InvokeVoidAsync("ScrollBottom");
-			var isPrompt = false;
-			var prompt = string.Empty;
-			int i = 10;
-			var aiMessageRecords = new List<AiMessageRecord>();
 
-			aiMessageRecords.Add(new(AiMessageRole.System, @"You are active like a person called Lisa. You and the user named Alan are both at an underground party."));
+			await ChatService.Say(newChat, _chat);
 
-			AddTrainingData(aiMessageRecords);
-
-			aiMessageRecords.Add(new(AiMessageRole.User, @$"{newChat}"));
-
-			writeOut = await AiProxy.ThinkStream(aiMessageRecords);
-
-			_messages.Add(DateTimeOffset.Now, new Message(writeOut ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true));
-
-			writeOut = null;
+			_messages.Add(DateTimeOffset.Now, new Message(newChat ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true));
+			
 			Task.Run(async () =>
 			{
 				await Task.Delay(200);
 				await JsRuntime.InvokeVoidAsync("ScrollBottom");
 			});
-
 		}
 		catch (Exception ex)
 		{
@@ -261,17 +222,7 @@ else
 		}
 		finally
 		{
-			sending = false;
-			writeOut = null;
 			StateHasChanged();
-		}
-
-		void AddTrainingData(List<AiMessageRecord> aiMessageRecords)
-		{
-			foreach (var message in _messages)
-			{
-				aiMessageRecords.Add(new AiMessageRecord(message.Value.IsHuman ? AiMessageRole.User : AiMessageRole.Assistant, message.Value.Text));
-			}
 		}
 	}
 

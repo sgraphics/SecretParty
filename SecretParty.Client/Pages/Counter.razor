@@ -223,7 +223,7 @@
 		_parties = parties.ToDictionary(x => x.RowKey);
 		foreach (var party in parties)
 		{
-			var point = GeoUtils.GenerateRandomPoint(Coordinates.Item1, Coordinates.Item2, 200);
+			var point = GeoUtils.GenerateRandomPoint(Coordinates.Item1, Coordinates.Item2, 500);
 
 
 			var htmlMarker = new HtmlMarker(
@@ -235,15 +235,21 @@
 						Popup = new HtmlMarkerPopup(new PopupOptions
 						{
 							Content = $@"
-<div class=""partypopup"">
-	<img class=""flyer"" src=""{party.PhotoThumb}"" />
-	<h2>{party.PartyName}</h2>
-	<span><b>Access:</b> free</span>
-	<span><b>Time:</b> ongoing</span>
-				<br/>
-	<span><b>Music style:</b> {party.MusicStyle}</span>
-	<span><b>Style:</b> {party.DressCode}</span>
-	<button onclick=""GreetingHelpers.openParty('{party.RowKey}');"">Open</button>
+<div class=""partypopup row"">
+	<div class=""col-7 col"" >
+
+		<h2>{party.PartyName}</h2>
+		<span><b>Access:</b> free</span>
+		<span><b>Time:</b> ongoing</span>
+					<br/>
+		<span><b>Music style:</b> {party.MusicStyle}</span>
+		<span><b>Style:</b> {party.DressCode}</span>
+		<button onclick=""GreetingHelpers.openParty('{party.RowKey}');"">Open</button>
+
+	</div>
+	<div class=""col-5 col"" >
+		<img class=""flyer"" src=""{party.PhotoThumb}"" />
+	</div>
 </div>",
 							Position = new Position(point.Item2, point.Item1),
 							FillColor = "white",
@@ -255,7 +261,7 @@
 			_markers.Add(party.RowKey, htmlMarker);
 			htmlMarker.OnClick += async (args) =>
 			{
-				foreach (var marker in _markers.Values)
+				foreach (var marker in _markers.Values.Where(x => x != htmlMarker))
 				{
 					await marker.Options.Popup.CloseAsync();
 				}

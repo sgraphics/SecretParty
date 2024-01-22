@@ -272,7 +272,7 @@ input[type=checkbox] {
     color: black;
 }
 
-    .partypopup > * {
+    .partypopup .col > * {
         display: block;
         white-space: normal !important;
     }

@@ -100,8 +100,8 @@ namespace SecretParty.Client
 			var PAT = _configuration["ClarifaiPAT"];
 			const string USER_ID = "openai";
 			const string APP_ID = "chat-completion";
-			const string MODEL_ID = "GPT-4";
-			const string MODEL_VERSION_ID = "5d7a50b44aec4a01a9c492c5a5fcf387";
+			const string MODEL_ID = "gpt-4-turbo";
+			const string MODEL_VERSION_ID = "182136408b4b4002a920fd500839f2c8";
 			var stream = new StringBuilder();
 			foreach (var aiMessageRecord in messages.Where(x => x.Role != AiMessageRole.System))
 			{
@@ -170,8 +170,8 @@ namespace SecretParty.Client
 				else
 				{
 					var thinkStream = result.outputs[0].data.text.raw as JToken;
-					Console.WriteLine(thinkStream?.Value<string>());
-					return thinkStream?.Value<string>() ?? string.Empty;
+					Console.WriteLine(thinkStream?.Value<string>()?.Replace("```json", string.Empty).Replace("```", ""));
+					return thinkStream?.Value<string>()?.Replace("```json", string.Empty).Replace("```", "") ?? string.Empty;
 				}
 			}
 			else

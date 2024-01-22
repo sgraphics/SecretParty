@@ -70,10 +70,15 @@ namespace SecretParty.Model
 		public ETag ETag { get; set; }
 
 		[JsonPropertyName("participants")]
+		[IgnoreDataMember]
 		public IList<Participant>? Participants { get; set; } = new List<Participant>();
-
-		[property: JsonPropertyName("participantsJson")]
-		public string? ParticipantsJson { get; set; }
+		
+		[JsonIgnore]
+		public string ParticipantsJson
+		{
+			get => JsonSerializer.Serialize(Participants);
+			set => Participants = JsonSerializer.Deserialize<IList<Participant>?>(value);
+		}
 
 		[JsonPropertyName("partyName")]
 		public string PartyName { get; init; }
@@ -101,7 +106,9 @@ namespace SecretParty.Model
 
 		public string? Photo { get; set; }
 		public string? PhotoThumb { get; set; }
+		[IgnoreDataMember]
 		public int ParticipantCount { get; set; }
+		[IgnoreDataMember]
 		public List<string> SomePhotos { get; set; } = new();
 	};
 
@@ -116,12 +123,31 @@ namespace SecretParty.Model
 		public ETag ETag { get; set; }
 
 		public string Participant1Id { get; set; }
+
+		public string GetOtherPronoun()
+		{
+			return Participant?.Gender == "M" ? "she" : "he";
+		}
 		public string Participant1Name { get; set; }
 		public string Participant1Age { get; set; }
 		public string? Participant2Id { get; set; }
 		public string? Participant2Name { get; set; }
 		public string? Participant2Age { get; set; }
+		[IgnoreDataMember]
 		public Party Party { get; set; }
+		[IgnoreDataMember]
+		public Participant Participant { get; set; }
+
+		[IgnoreDataMember]
+		[JsonIgnore]
+		public Participant OtherParticipant => string.IsNullOrWhiteSpace(Participant2Id)
+			? null
+			: new()
+			{
+				Name = Participant1Id == Participant.RowKey ? Participant2Name : Participant1Name,
+				RowKey = Participant1Id == Participant.RowKey ? Participant2Id : Participant1Id,
+				Age = Participant1Id == Participant.RowKey ? Participant2Age : Participant1Age,
+			};
 
 		[IgnoreDataMember]
 		public List<ChatMessageData> History { get; set; } = new();
