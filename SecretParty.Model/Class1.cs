@@ -57,6 +57,7 @@ namespace SecretParty.Model
 
 		public string? User { get; set; }
 		public string? ActiveChatId { get; set; }
+		public int Score { get; set; }
 	};
 
 	public class Party : ITableEntity
@@ -140,13 +141,15 @@ namespace SecretParty.Model
 
 		[IgnoreDataMember]
 		[JsonIgnore]
-		public Participant OtherParticipant => string.IsNullOrWhiteSpace(Participant2Id)
+		public Participant? OtherParticipant => string.IsNullOrWhiteSpace(Participant2Id)
 			? null
 			: new()
 			{
 				Name = Participant1Id == Participant.RowKey ? Participant2Name : Participant1Name,
 				RowKey = Participant1Id == Participant.RowKey ? Participant2Id : Participant1Id,
 				Age = Participant1Id == Participant.RowKey ? Participant2Age : Participant1Age,
+				PhotoThumb = Participant1Id == Participant.RowKey ? Participant2PhotoThumb : Participant1PhotoThumb,
+				Photo = Participant1Id == Participant.RowKey ? Participant2Photo : Participant1Photo,
 			};
 
 		[IgnoreDataMember]
@@ -158,6 +161,11 @@ namespace SecretParty.Model
 			get => JsonSerializer.Serialize(History);
 			set => History = JsonSerializer.Deserialize<List<ChatMessageData>>(value);
 		}
+
+		public string? Participant1PhotoThumb { get; set; }
+		public string? Participant2PhotoThumb { get; set; }
+		public string? Participant1Photo { get; set; }
+		public string? Participant2Photo { get; set; }
 	}
 
 	public class ChatMessageData

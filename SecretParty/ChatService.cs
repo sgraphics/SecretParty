@@ -59,9 +59,11 @@ namespace SecretParty
 					Participant1Id = participant.RowKey,
 					Participant1Name = participant.Name,
 					Participant1Age = participant.Age,
+					Participant1PhotoThumb = participant.PhotoThumb,
 					Participant2Id = participant2?.RowKey,
 					Participant2Age = participant2?.Age,
 					Participant2Name = participant2?.Name,
+					Participant2PhotoThumb = participant2?.PhotoThumb,
 					PartitionKey = partyId,
 				};
 				if (participant2 != null)
@@ -111,9 +113,10 @@ namespace SecretParty
 					Stopwatch stopper = new Stopwatch();
 					stopper.Start();
 
-					var aiMessageRecords = new List<AiMessageRecord>();
-
-					aiMessageRecords.Add(new(AiMessageRole.System, @$"Conversation is between the user ({participant.Name}, {participant.Gender}, {participant.Age}) and a person called {otherParticipant.Name}. {otherParticipant.Name} is a {otherParticipant.Age} year old {otherParticipant.Gender}, who looks like this: {otherParticipant.Description}. {otherParticipant.Name} chatting style is as follows: {otherParticipant.ChattingStyle}. All generated answers must follow this writing style, and overall feel like a real person is writing. {otherParticipant.Name} aim is to answer questions but also ask questions about the user to learn more and perhaps hook up. Conversation can be flirty. Conversation takes place at a party: {chat.Party}, dress code: {chat.Party.DressCode}, music style {chat.Party.MusicStyle}."));
+					var aiMessageRecords = new List<AiMessageRecord>
+					{
+						new(AiMessageRole.System, @$"Conversation is between the user ({participant.Name}, {participant.Gender}, {participant.Age}) and a person called {otherParticipant.Name}. {otherParticipant.Name} is a {otherParticipant.Age} year old {otherParticipant.Gender}, who looks like this: {otherParticipant.Description}. {otherParticipant.Name} chatting style is as follows: {otherParticipant.ChattingStyle}. All generated answers must follow this writing style, and overall feel like a real person is writing. IMPORTANT: {otherParticipant.Name} message should be VERY short, brief, MAXIMUM 2 sentences, but can be even shorter like only 3 words. {otherParticipant.Name} aim is to answer questions but also ask questions about the user to learn more and perhaps hook up. Conversation can be flirty. Conversation takes place at a party: {chat.Party}, dress code: {chat.Party.DressCode}, music style {chat.Party.MusicStyle}.")
+					};
 
 					AddChatHistory(chat, aiMessageRecords);
 
@@ -131,9 +134,9 @@ namespace SecretParty
 
 					var seconds = stopper.ElapsedMilliseconds / 1000;
 
-					var shouldTakeSeconds = writeOut.Length / 2;
+					var shouldTakeSeconds = writeOut.Length / 3;
 
-					if (shouldTakeSeconds < seconds)
+					if (shouldTakeSeconds > seconds)
 					{
 						await Task.Delay(TimeSpan.FromSeconds(shouldTakeSeconds - seconds));
 					}
@@ -152,6 +155,70 @@ namespace SecretParty
 			{
 				aiMessageRecords.Add(new AiMessageRecord(message.ParticipantId == chat.Participant.RowKey ? AiMessageRole.User : AiMessageRole.Assistant, message.Message));
 			}
+		}
+
+		public async Task<bool> EndChat(ChatData chat, bool isBot)
+		{
+			var serviceClient = new TableServiceClient(_configuration["AzureWebJobsStorage"]);
+			var participantsTable = serviceClient.GetTableClient("Participant");
+			var chatsTable = serviceClient.GetTableClient("Chat");
+			await participantsTable.CreateIfNotExistsAsync();
+			await chatsTable.CreateIfNotExistsAsync();
+			var participants = await participantsTable.QueryAsync<Participant>(x => x.ActiveChatId == chat.RowKey).ToListAsync();
+
+			var participant = chat.Participant;
+			var otherParticipant = participants.FirstOrDefault(x => string.IsNullOrWhiteSpace(x.User) || x.User != chat.Participant.User);
+			bool isScore = false;
+			if (string.IsNullOrWhiteSpace(otherParticipant.User))
+			{
+				//is bot
+				if (isBot)
+				{
+					participant.Score++;
+					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+					{
+						{ "ActiveChatId", "" },
+						{ "Score", participant.Score },
+					});
+					isScore = true;
+				}
+				else
+				{
+				}
+			}
+			else
+			{
+				if (!isBot)
+				{
+
+					participant.Score++;
+					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+					{
+						{ "ActiveChatId", "" },
+						{ "Score", participant.Score },
+					});
+
+					await participantsTable.UpsertEntityAsync(new TableEntity(otherParticipant.PartitionKey, otherParticipant.RowKey)
+					{
+						{ "ActiveChatId", "" },
+					});
+					isScore = true;
+				}
+				else
+				{
+					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+					{
+						{ "ActiveChatId", "" },
+					});
+
+					await participantsTable.UpsertEntityAsync(new TableEntity(otherParticipant.PartitionKey, otherParticipant.RowKey)
+					{
+						{ "ActiveChatId", "" },
+					});
+				}
+			}
+
+			return isScore;
 		}
 	}
 }

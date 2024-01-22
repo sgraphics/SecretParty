@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Mvc
 @using SecretParty.Model
+@using System.Reactive.Linq
 @inject IJSRuntime JsRuntime
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject AiProxy AiProxy
@@ -75,6 +76,24 @@ else
 			</div>
 		</div>
 	</div>
+	@if (_chat?.OtherParticipant != null)
+	{
+		<div class="hotornot">
+			<div class="row">
+				<div clas="col col-3">
+
+					<p class="participantwidget">
+						<a href="@_chat.OtherParticipant.Photo" target="_blank">
+							<img src="@_chat.OtherParticipant.PhotoThumb" class="participantwidgetimage" />
+						</a>
+					</p>
+				</div>
+				<div clas="col col-3">Is @_chat.OtherParticipant.Name human?</div>
+				<div clas="col col-3"><button @onclick="() => EndChat(true)">AI</button></div>
+				<div clas="col col-3"><button @onclick="() => EndChat(false)">human</button></div>
+			</div>
+		</div>
+	}
 }
 
 <Modal @ref="modal">
@@ -150,11 +169,31 @@ else
 			{
 				return;
 			}
-			_chat = await ChatService.StartChat(PartyId!);
+
+			await GetChat();
+			await modal.Show();
 		}
 		finally
 		{
 			_busy = false;
+		}
+	}
+
+	private async Task GetChat()
+	{
+		_chat = await ChatService.StartChat(PartyId!);
+		if (_chat is { OtherParticipant: not null })
+		{
+			ChatService.ChatUpdates.Where(x => x.Item1 == _chat.RowKey).Subscribe(x =>
+			{
+				var (chatId, chatMessageData) = x;
+				var isHuman = chatMessageData.ParticipantId == _chat.Participant.RowKey;
+				_messages.Add(chatMessageData.Timestamp, new Message(chatMessageData.Message, chatMessageData.Timestamp, Guid.NewGuid().ToString(), isHuman, true));
+				sending = isHuman;
+				InvokeAsync(() => base.StateHasChanged());
+
+			});
+			//sending = _chat.History.MaxBy(x => x.Timestamp)?.ParticipantId == _chat.Participant.RowKey;
 		}
 	}
 
@@ -167,8 +206,7 @@ else
 			return;
 		}
 		_init = true;
-		_chat = await ChatService.StartChat(PartyId!);
-
+		await GetChat();
 		await modal.Show();
 
 		_messages = new SortedList<DateTimeOffset, Message>();
@@ -198,8 +236,6 @@ else
 
 			var newChat = messageToSend;
 
-			_messages.Add(DateTimeOffset.Now, new Message(messageToSend ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), true, true));
-
 			messageToSend = null;
 
 			StateHasChanged();
@@ -208,8 +244,6 @@ else
 
 			await ChatService.Say(newChat, _chat);
 
-			_messages.Add(DateTimeOffset.Now, new Message(newChat ?? string.Empty, DateTimeOffset.Now, Guid.NewGuid().ToString(), false, true));
-			
 			Task.Run(async () =>
 			{
 				await Task.Delay(200);
@@ -224,6 +258,22 @@ else
 		{
 			StateHasChanged();
 		}
+	}
+
+	private async Task EndChat(bool isBot)
+	{
+		var correct = await ChatService.EndChat(_chat, isBot);
+		if (correct)
+		{
+			await JsRuntime.InvokeVoidAsync("alert", "Correct! You get one point!");
+		}
+		else
+		{
+			await JsRuntime.InvokeVoidAsync("alert", "Wrong! No points for you");
+		}
+
+		_chat = null;
+		await Retry();
 	}
 
 }
