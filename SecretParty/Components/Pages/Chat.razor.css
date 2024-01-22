@@ -354,3 +354,11 @@ h2 sup
 {
     width:25%;
 }
+.chatwith {
+    width: 100px;
+    float:right;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid white;
+}

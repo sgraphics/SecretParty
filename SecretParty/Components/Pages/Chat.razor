@@ -105,8 +105,9 @@ else
 				{
 					<h4>Start mingling</h4>
 					<p>
+						<img src="@_chat?.OtherParticipant.PhotoThumb" class="chatwith" />
 						You are chatting with @_chat.OtherParticipant.Name (@_chat.OtherParticipant.Age), the goal is to guess whether @_chat.GetOtherPronoun() is an AI or real human. If you guess correctly you get one point.
-						<br /><br />
+						<br/><br/>
 						But do it quickly, if @_chat.GetOtherPronoun() <i>is</i> a human and guesses correctly before you then @_chat.GetOtherPronoun() gets the point instead.
 					</p>
 				}
@@ -273,6 +274,8 @@ else
 		}
 
 		_chat = null;
+		_messages.Clear();
+		sending = false;
 		await Retry();
 	}
 

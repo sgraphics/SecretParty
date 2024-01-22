@@ -9,6 +9,7 @@ using SecretParty.Web.Data;
 using Blazr.RenderState.Server;
 using SecretParty;
 using SecretParty.Client;
+using AzureMapsControl.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,13 @@ builder.Services.AddScoped(sp =>
 	new HttpClient
 	{
 	});
+builder.Services.AddAzureMapsControl(
+	configuration =>
+	{
+		var key = "9us7lWqyKd-0QjY9WKXcvgx6uxKh63NKq8vCYcOfQOA";
+		configuration.SubscriptionKey = key;
+	});
+
 builder.Services.AddControllers()
 	.AddJsonOptions(options =>
 	{
