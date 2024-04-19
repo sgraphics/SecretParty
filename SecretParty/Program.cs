@@ -10,6 +10,7 @@ using Blazr.RenderState.Server;
 using SecretParty;
 using SecretParty.Client;
 using AzureMapsControl.Components;
+using Microsoft.AspNetCore.Rewrite;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,14 @@ builder.AddBlazrRenderStateServerServices();
 
 var app = builder.Build();
 
+app.UseRewriter(new RewriteOptions()
+	// redirect non www to www.
+	.AddRedirectToWwwPermanent()
+
+	// While we are at it, let's also redirect http to https.
+	.AddRedirectToHttpsPermanent()
+);
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -62,7 +71,7 @@ else
 	app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseRouting();
@@ -77,8 +86,6 @@ app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode()
 	.AddInteractiveWebAssemblyRenderMode()
 	.AddAdditionalAssemblies(typeof(Counter).Assembly);
-
-
 
 StripeConfiguration.ApiKey = builder.Configuration["StripeApi"];
 

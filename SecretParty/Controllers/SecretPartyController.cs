@@ -108,7 +108,7 @@ namespace SecretParty.Controllers
 		[Route("createParties")]
 		public async Task<ActionResult> CreateParties()
 		{
-			var partition = DateTimeOffset.UtcNow.ToString("yy-MM-dd");
+			var partition = DateTimeOffset.Now.AddDays(1).ToString("yy-MM-dd");
 			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
 			var partiesTable = serviceClient.GetTableClient("Party");
 			await partiesTable.CreateIfNotExistsAsync();

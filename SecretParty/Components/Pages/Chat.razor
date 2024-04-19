@@ -1,4 +1,5 @@
 ﻿@page "/chat"
+@implements IDisposable
 @rendermode @(new InteractiveServerRenderMode(false))
 
 <PageTitle>SecretParty Chat</PageTitle>
@@ -8,6 +9,7 @@
 @using Microsoft.AspNetCore.Mvc
 @using SecretParty.Model
 @using System.Reactive.Linq
+@using System.Reactive.Disposables
 @inject IJSRuntime JsRuntime
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject AiProxy AiProxy
@@ -72,7 +74,7 @@ else
 		<div class="col col-12">
 			<img src="img/send.webp" @onclick="SendMessage" class="sendimage @(sending ? "disabled" : String.Empty)" alt="send chat to AI" />
 			<div class="textcontainer">
-				<textarea placeholder="Chat with Lisa M" rows="1" @bind="messageToSend"></textarea>
+				<textarea placeholder="Chat with @(_chat?.OtherParticipant?.Name ?? "...")" rows="1" @bind="messageToSend"></textarea>
 			</div>
 		</div>
 	</div>
@@ -152,6 +154,8 @@ else
 
 	private string? messageToSend;
 
+	private SerialDisposable _chatSubscription = new SerialDisposable();
+
 	private record Message(string Text, DateTimeOffset Timestamp, string Id, bool IsHuman, bool IsChat, bool IsError = false, string? img = null)
 	{
 	}
@@ -185,13 +189,31 @@ else
 		_chat = await ChatService.StartChat(PartyId!);
 		if (_chat is { OtherParticipant: not null })
 		{
-			ChatService.ChatUpdates.Where(x => x.Item1 == _chat.RowKey).Subscribe(x =>
+			_chatSubscription.Disposable = ChatService.ChatUpdates.Where(x => x.Item1 == _chat.RowKey).Subscribe(x =>
 			{
 				var (chatId, chatMessageData) = x;
-				var isHuman = chatMessageData.ParticipantId == _chat.Participant.RowKey;
-				_messages.Add(chatMessageData.Timestamp, new Message(chatMessageData.Message, chatMessageData.Timestamp, Guid.NewGuid().ToString(), isHuman, true));
-				sending = isHuman;
-				InvokeAsync(() => base.StateHasChanged());
+				if (chatMessageData.IsBot.HasValue)
+				{
+					if (chatMessageData.ParticipantId != _chat.Participant.RowKey)
+					{
+						if (chatMessageData.IsBot.Value)
+						{
+							JsRuntime.InvokeVoidAsync("alert", _chat.OtherParticipant.Name + " voted that you are a bot! No-one gets a point.");
+						}
+						else
+						{
+							JsRuntime.InvokeVoidAsync("alert", $"{_chat.OtherParticipant.Name} voted that you are human and {_chat.GetOtherPronoun()} gets a point!");
+						}
+					}
+					InvokeAsync(CycleChat);
+				}
+				else
+				{
+					var isHuman = chatMessageData.ParticipantId == _chat.Participant.RowKey;
+					_messages.Add(chatMessageData.Timestamp, new Message(chatMessageData.Message, chatMessageData.Timestamp, Guid.NewGuid().ToString(), isHuman, true));
+					sending = isHuman;
+					InvokeAsync(() => base.StateHasChanged());
+				}
 
 			});
 			//sending = _chat.History.MaxBy(x => x.Timestamp)?.ParticipantId == _chat.Participant.RowKey;
@@ -273,10 +295,24 @@ else
 			await JsRuntime.InvokeVoidAsync("alert", "Wrong! No points for you");
 		}
 
+		await CycleChat();
+	}
+
+	private async Task CycleChat()
+	{
 		_chat = null;
 		_messages.Clear();
 		sending = false;
 		await Retry();
+	}
+
+	public void Dispose()
+	{
+		_chatSubscription.Dispose();
+		if (modal is IDisposable modalDisposable)
+			modalDisposable.Dispose();
+		else
+			_ = modal.DisposeAsync().AsTask();
 	}
 
 }

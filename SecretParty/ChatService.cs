@@ -1,12 +1,9 @@
 ﻿using System.Diagnostics;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Azure.Core;
 using Azure.Data.Tables;
-using BootstrapBlazor.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SecretParty.Client;
-using SecretParty.Components.Pages;
 using SecretParty.Model;
 
 namespace SecretParty
@@ -14,14 +11,16 @@ namespace SecretParty
 	public class ChatService
 	{
 		private readonly IConfiguration _configuration;
-		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly AiProxy _aiProxy;
+		private readonly ILogger<ChatService> _logger;
+		private readonly AuthenticationStateProvider _authenticationStateProvider;
 
-		public ChatService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor, AiProxy aiProxy)
+		public ChatService(IConfiguration configuration, AiProxy aiProxy, ILogger<ChatService> logger, AuthenticationStateProvider authenticationStateProvider)
 		{
 			_configuration = configuration;
-			_httpContextAccessor = httpContextAccessor;
 			_aiProxy = aiProxy;
+			_logger = logger;
+			_authenticationStateProvider = authenticationStateProvider;
 		}
 
 		[HttpGet]
@@ -36,7 +35,11 @@ namespace SecretParty
 			var chatTable = serviceClient.GetTableClient("Chat");
 			await chatTable.CreateIfNotExistsAsync();
 			var party = await partiesTable.QueryAsync<Party>(x => x.RowKey == partyId).FirstOrDefaultAsync();
-			var user = _httpContextAccessor.HttpContext?.User.Identity?.Name;
+			var state = await _authenticationStateProvider.GetAuthenticationStateAsync();
+			var user = state.User?.Identity?.Name;
+			//var user = _httpContextAccessor.HttpContext?.User.Identity?.Name;
+
+			//_logger.LogInformation("user is " + user);
 
 			var participants =
 				await participantsTable.QueryAsync<Participant>(x => x.PartitionKey == party.RowKey).ToListAsync();
@@ -51,9 +54,18 @@ namespace SecretParty
 			}
 			else
 			{
+				var previousChats = await chatTable.QueryAsync<ChatData>()
+					.Where(x => x.PartitionKey == partyId && (x.Participant1Id == participant.RowKey || x.Participant2Id == participant.RowKey))
+					.ToListAsync();
+
+				var previousPartners = previousChats.SelectMany(x => new[] { x.Participant1Id, x.Participant2Id })
+					.ToHashSet();
+
 				var participant2 = participants
 					.Where(x => string.IsNullOrWhiteSpace(x.ActiveChatId) && x.Gender != participant.Gender && x.User != user)
+					.Where(x => !previousPartners.Contains(x.RowKey))
 					.MinBy(x => Guid.NewGuid());
+
 				chat = new ChatData
 				{
 					Participant1Id = participant.RowKey,
@@ -146,6 +158,9 @@ namespace SecretParty
 			}
 		}
 
+		/// <summary>
+		/// chat id
+		/// </summary>
 		public static readonly Subject<(string, ChatMessageData)>
 			ChatUpdates = new Subject<(string, ChatMessageData)>();
 
@@ -159,9 +174,16 @@ namespace SecretParty
 
 		public async Task<bool> EndChat(ChatData chat, bool isBot)
 		{
+			var state = await _authenticationStateProvider.GetAuthenticationStateAsync();
+			var userId = state.User?.Identity?.Name;
+
 			var serviceClient = new TableServiceClient(_configuration["AzureWebJobsStorage"]);
 			var participantsTable = serviceClient.GetTableClient("Participant");
 			var chatsTable = serviceClient.GetTableClient("Chat");
+			var userTable = serviceClient.GetTableClient("Users");
+			var user = (await userTable.GetEntityAsync<TableEntity>(string.Empty, userId)).Value;
+			var currentScore = user.GetInt32("Score") ?? 0;
+
 			await participantsTable.CreateIfNotExistsAsync();
 			await chatsTable.CreateIfNotExistsAsync();
 			var participants = await participantsTable.QueryAsync<Participant>(x => x.ActiveChatId == chat.RowKey).ToListAsync();
@@ -174,51 +196,48 @@ namespace SecretParty
 				//is bot
 				if (isBot)
 				{
-					participant.Score++;
-					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+					await userTable.UpsertEntityAsync(new TableEntity(string.Empty, userId)
 					{
-						{ "ActiveChatId", "" },
-						{ "Score", participant.Score },
+						{ "Score", ++currentScore },
 					});
 					isScore = true;
-				}
-				else
-				{
 				}
 			}
 			else
 			{
 				if (!isBot)
 				{
-
-					participant.Score++;
-					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+					await userTable.UpsertEntityAsync(new TableEntity(string.Empty, userId)
 					{
-						{ "ActiveChatId", "" },
-						{ "Score", participant.Score },
-					});
-
-					await participantsTable.UpsertEntityAsync(new TableEntity(otherParticipant.PartitionKey, otherParticipant.RowKey)
-					{
-						{ "ActiveChatId", "" },
+						{ "Score", ++currentScore },
 					});
 					isScore = true;
 				}
-				else
-				{
-					await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
-					{
-						{ "ActiveChatId", "" },
-					});
-
-					await participantsTable.UpsertEntityAsync(new TableEntity(otherParticipant.PartitionKey, otherParticipant.RowKey)
-					{
-						{ "ActiveChatId", "" },
-					});
-				}
 			}
+			await ResetActiveChat(participantsTable, participant, otherParticipant);
+
+			ChatUpdates.OnNext((chat.RowKey, new ChatMessageData
+			{
+				ParticipantId = chat.Participant.RowKey,
+				Timestamp = DateTimeOffset.UtcNow,
+				IsBot = isBot
+			}));
 
 			return isScore;
+		}
+
+		private static async Task ResetActiveChat(TableClient participantsTable, Participant participant,
+			Participant otherParticipant)
+		{
+			await participantsTable.UpsertEntityAsync(new TableEntity(participant.PartitionKey, participant.RowKey)
+			{
+				{ "ActiveChatId", "" },
+			});
+
+			await participantsTable.UpsertEntityAsync(new TableEntity(otherParticipant.PartitionKey, otherParticipant.RowKey)
+			{
+				{ "ActiveChatId", "" },
+			});
 		}
 	}
 }

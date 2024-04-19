@@ -29,7 +29,7 @@
 	@if (_existingParticipant != null && _activeParty != null)
 	{
 		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
-		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(0,0,0,0.840795693277311) 8%, rgba(78,78,78,0.5690870098039216) 54%, rgba(0,0,0,0.26376488095238093) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
 		<div class="row">
 			<div class="col col-12 partypage">
 				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
@@ -47,7 +47,7 @@
 	else if (_newParticipant != null && _activeParty != null)
 	{
 		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
-		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(0,0,0,0.840795693277311) 8%, rgba(78,78,78,0.5690870098039216) 54%, rgba(0,0,0,0.26376488095238093) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
 		<div class="row">
 			<div class="col col-12 partypage">
 				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>
@@ -93,7 +93,7 @@
 	else if (_activeParty != null)
 	{
 		<div class="partyback" style="background-image:url(@_activeParty.Photo)"></div>
-		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(21,21,21,1) 49%, rgba(0,212,255,0) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
+		<div class="partygradient" style="background: linear-gradient(0deg, rgba(21,21,21,1) 0%, rgba(0,0,0,0.840795693277311) 8%, rgba(78,78,78,0.5690870098039216) 54%, rgba(0,0,0,0.26376488095238093) 92%, @(_activeParty.PrimaryColor)77 100%)"></div>
 		<div class="row">
 			<div class="col col-12 partypage">
 				<a href="javascript:void(0)" class="closebtn" @onclick="() => _activeParty = null">&#10005;</a>

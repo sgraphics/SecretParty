@@ -172,6 +172,7 @@ namespace SecretParty.Model
 	{
 		public string ParticipantId { get; set; }
 		public DateTimeOffset Timestamp { get; set; }
-		public string Message { get; set; }
+		public string? Message { get; set; }
+		public bool? IsBot { get; set; }
 	}
 }

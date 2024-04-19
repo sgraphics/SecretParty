@@ -374,11 +374,11 @@ p.participantwidget img {
 .partyback {
     height: 100vh;
     position: absolute;
-    width:100vw;
+    width: 100vw;
     background-color: #151515;
-    z-index:-2;
-    background-size:cover;
-    filter:grayscale(.2) brightness(1);
+    z-index: -2;
+    background-size: cover;
+    filter: grayscale(0.5) brightness(.5);
 }
 .partygradient {
     height: 100vh;
