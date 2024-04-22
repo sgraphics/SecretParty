@@ -62,8 +62,8 @@ namespace SecretParty.Controllers
 		[HttpGet]
 		[Route("getTodaysParties")]
 		public async Task<ActionResult> GetParties()
-		{
-			var partition = DateTimeOffset.UtcNow.ToString("yy-MM-dd");
+        {
+            var partition = "24-02-02";//DateTimeOffset.UtcNow.ToString("yy-MM-dd");
 			var serviceClient = new TableServiceClient(configuration["AzureWebJobsStorage"]);
 			var partiesTable = serviceClient.GetTableClient("Party");
 			await partiesTable.CreateIfNotExistsAsync();
